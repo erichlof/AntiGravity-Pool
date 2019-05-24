@@ -116,7 +116,7 @@ float SceneIntersect( Ray r, inout Intersection intersec )
 		t = d;
 		intersec.normal = normalize((r.origin + r.direction * t) - uBallPositions[1]);
 		intersec.emission = vec3(0);
-		intersec.color = vec3(0.001);
+		intersec.color = vec3(0.005);
 		intersec.type = COAT;
 	}
 	
@@ -275,8 +275,6 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		vec3 x = r.origin + r.direction * t;
 
 		
-		//randChoose = rand(seed) * 8.0; // 8 lights to choose from
-		//lightChoice = spheres[int(randChoose)];
 		float angleToNearestLight = -INFINITY;
 		float aTest;
 		int intBest = 0;
@@ -286,7 +284,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		{
 			aTest = dot(nl, normalize(spheres[i].position - x));
 			//aTest += (1.0 / distance(x, spheres[i].position));
-			aTest += ((rand(seed) * 2.0 - 1.0) * 0.3);
+			aTest += (rand(seed) * 2.0 - 1.0);
 			if (aTest > angleToNearestLight)
 			{
 				angleToNearestLight = aTest;
@@ -343,7 +341,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				firstRay = Ray( x, reflect(r.direction, nl) ); // create reflection ray from surface
 				firstRay.origin += nl * uEPS_intersect;
 
-				mask = vec3(4);
+				mask = vec3(5);
 			}
 			
 			// transmit ray through surface
@@ -426,7 +424,7 @@ void SetupScene(void)
 	spheres[6] = Sphere(10.0, uBallPositions[22], L, z, LIGHT); // top left back spherical light
 	spheres[7] = Sphere(10.0, uBallPositions[23], L, z, LIGHT); // top right back spherical light
 	
-	boxes[0] = Box(vec3(-50), vec3(50), z, vec3(0.0, 0.05, 0.9), DIFF); // Diffuse Box
+	boxes[0] = Box(vec3(-50), vec3(50), z, vec3(0.0, 0.05, 0.99), DIFF); // Diffuse Box
 }
 
 
@@ -496,13 +494,13 @@ void main( void )
 
 	if (uCameraIsMoving || previousImage.a > 0.0)
 	{
-                previousColor *= 0.5; // motion-blur trail amount (old image)
-                pixelColor *= 0.5; // brightness of new image (noisy)
+                previousColor *= 0.6; // motion-blur trail amount (old image)
+                pixelColor *= 0.4; // brightness of new image (noisy)
         }
 	else
 	{
-                previousColor *= 0.93; // motion-blur trail amount (old image)
-                pixelColor *= 0.07; // brightness of new image (noisy)
+                previousColor *= 0.94; // motion-blur trail amount (old image)
+                pixelColor *= 0.06; // brightness of new image (noisy)
         }
 	
         out_FragColor = vec4( pixelColor + previousColor, rayHitIsDynamic? 1.0 : 0.0 );	
