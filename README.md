@@ -3,7 +3,6 @@ The first real-time pathtraced game for desktop and mobile using WebGL. <br>
 Click to Play --> https://erichlof.github.io/AntiGravity-Pool/AntiGravityPool.html <br>
 
 Desktop Controls <br>
-
 * Click anywhere to capture mouse
 * move Mouse to aim cueball
 * Mousewheel to dolly camera in or out
