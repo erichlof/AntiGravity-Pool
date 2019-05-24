@@ -676,8 +676,7 @@ function doGameStateLogic(ballPocketed)
 // called automatically from within the animate() function
 function updateVariablesAndUniforms() 
 {
-        world.timeStep = frameTime;
-
+        
         if (playerIsAiming) 
         {
                 if ( dollyCameraIn ) 
@@ -838,6 +837,7 @@ function updateVariablesAndUniforms()
                 }
         }
 
+        world.timeStep = frameTime;
         updateOimoPhysics();
         
 
