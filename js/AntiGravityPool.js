@@ -1,7 +1,8 @@
 // game-specific variables go here
 var EPS_intersect;
 var sceneIsDynamic = true;
-var camFlightSpeed = 20;
+var camFlightSpeed = 30;
+var initialCameraZ;
 var cameraZOffset = 0;
 var ballPositions = [];
 var sphereSize = 2;
@@ -68,87 +69,25 @@ function initSceneData()
 {        
         // game-specific three.js variables / Oimo.js physics setup goes here
 
-        for (let i = 0; i < 24; i++)
-        {
-                ballPositions[i] = new THREE.Vector3();
-        }
+        //pixelRatio = 1.0; // for computers with the latest GPUs!
 
-        world = new OIMO.World({timestep: mouseControl ? 1/60 : 1/30, worldscale: 1} );
-        //world = new OIMO.World();
-        world.gravity = new OIMO.Vec3(0, 0, 0);
-
-
-        // TODO just set startNewGame to true and remove the following
-
-        let tableBoxBottom = world.add({size:[100, 2, 100], pos:[0,-50,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxTop    = world.add({size:[100, 2, 100], pos:[0, 50,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxLeft   = world.add({size:[2, 100, 100], pos:[-50,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxRight  = world.add({size:[2, 100, 100], pos:[ 50,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxBack   = world.add({size:[100, 100, 2], pos:[0,0,-50], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxFront  = world.add({size:[100, 100, 2], pos:[0,0, 50], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-
-        // white cueball
-        rigidBodies[0] = world.add({type:'sphere', name:'cueball', size:[sphereSize], pos:[0, 0, 40], move:true, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        aimOrigin.copy(rigidBodies[0].position);
-
-        // camera
-        cameraControlsObject.position.copy(rigidBodies[0].position);
-        worldCamera.position.set(0, 0, 20);
-
-        // black ball
-        rigidBodies[1] = world.add({type:'sphere', name:'blackball', size:[sphereSize], pos:[0, 0, 0], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        
-        // red balls
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[2] = world.add({type:'sphere', name:'redball2', size:[sphereSize], pos:[-sml + rnd0,sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[3] = world.add({type:'sphere', name:'redball3', size:[sphereSize], pos:[sml + rnd0,sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[4] = world.add({type:'sphere', name:'redball4', size:[sphereSize], pos:[-sml + rnd0,-sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[5] = world.add({type:'sphere', name:'redball5', size:[sphereSize], pos:[sml + rnd0,-sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[6] = world.add({type:'sphere', name:'redball6', size:[sphereSize], pos:[0 + rnd0,lrg + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[7] = world.add({type:'sphere', name:'redball7', size:[sphereSize], pos:[lrg + rnd0,0 + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[8] = world.add({type:'sphere', name:'redball8', size:[sphereSize], pos:[0 + rnd0,0 + rnd1,-lrg + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        
-        // yellow balls
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[9] = world.add({type:'sphere', name:'yellowball9', size:[sphereSize], pos:[sml + rnd0,sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[10] = world.add({type:'sphere', name:'yellowball10', size:[sphereSize], pos:[-sml + rnd0,sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[11] = world.add({type:'sphere', name:'yellowball11', size:[sphereSize], pos:[sml + rnd0,-sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[12] = world.add({type:'sphere', name:'yellowball12', size:[sphereSize], pos:[-sml + rnd0,-sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[13] = world.add({type:'sphere', name:'yellowball13', size:[sphereSize], pos:[0 + rnd0,-lrg + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[14] = world.add({type:'sphere', name:'yellowball14', size:[sphereSize], pos:[-lrg + rnd0,0 + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
-        rigidBodies[15] = world.add({type:'sphere', name:'yellowball15', size:[sphereSize], pos:[0 + rnd0,0 + rnd1,lrg + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        
-        // pockets
-        rigidBodies[16] = world.add({type:'sphere', name:'pocket0', size:[pocketSize], pos:[-pocketPosX, -pocketPosY, pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rigidBodies[17] = world.add({type:'sphere', name:'pocket1', size:[pocketSize], pos:[pocketPosX, -pocketPosY, pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rigidBodies[18] = world.add({type:'sphere', name:'pocket2', size:[pocketSize], pos:[-pocketPosX, pocketPosY, pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rigidBodies[19] = world.add({type:'sphere', name:'pocket3', size:[pocketSize], pos:[pocketPosX, pocketPosY, pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rigidBodies[20] = world.add({type:'sphere', name:'pocket4', size:[pocketSize], pos:[-pocketPosX, -pocketPosY, -pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rigidBodies[21] = world.add({type:'sphere', name:'pocket5', size:[pocketSize], pos:[pocketPosX, -pocketPosY, -pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rigidBodies[22] = world.add({type:'sphere', name:'pocket6', size:[pocketSize], pos:[-pocketPosX, pocketPosY, -pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-        rigidBodies[23] = world.add({type:'sphere', name:'pocket7', size:[pocketSize], pos:[pocketPosX, pocketPosY, -pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-
-        
         // we will use our own custom input handling for this game
         useGenericInput = false;
         
         // set camera's field of view
         worldCamera.fov = 40;
         EPS_intersect = mouseControl ? 0.1 : 1.0; // less precision on mobile
+        initialCameraZ = mouseControl ? 8 : 5; // closer to cueball is better for mobile
 
-        //pixelRatio = 1.0; // for computers with the latest GPUs!
+        for (let i = 0; i < 24; i++)
+        {
+                ballPositions[i] = new THREE.Vector3();
+        }
+
+        world = new OIMO.World({timestep: mouseControl ? 1/60 : 1/30, worldscale: 1} );
+        world.gravity = new OIMO.Vec3(0, 0, 0);
+
+        startNewGame();
 
 } // end function initSceneData()
 
@@ -262,12 +201,12 @@ function startNewGame()
 
         world.clear();
 
-        let tableBoxBottom = world.add({size:[100, 2, 100], pos:[0,-50,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxTop    = world.add({size:[100, 2, 100], pos:[0, 50,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxLeft   = world.add({size:[2, 100, 100], pos:[-50,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxRight  = world.add({size:[2, 100, 100], pos:[ 50,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxBack   = world.add({size:[100, 100, 2], pos:[0,0,-50], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxFront  = world.add({size:[100, 100, 2], pos:[0,0, 50], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        let tableBoxBottom = world.add({size:[100, 10, 100], pos:[0,-55,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        let tableBoxTop    = world.add({size:[100, 10, 100], pos:[0, 55,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        let tableBoxLeft   = world.add({size:[10, 100, 100], pos:[-55,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        let tableBoxRight  = world.add({size:[10, 100, 100], pos:[ 55,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        let tableBoxBack   = world.add({size:[100, 100, 10], pos:[0,0,-55], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        let tableBoxFront  = world.add({size:[100, 100, 10], pos:[0,0, 55], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
         
         // add static balls for aiming purposes
 
@@ -278,7 +217,7 @@ function startNewGame()
         
         // camera
         cameraControlsObject.position.copy(rigidBodies[0].position);
-        worldCamera.position.set(0, 0, 20);
+        worldCamera.position.set(0, 0, initialCameraZ);
 
         // blackball
         x = 0; y = 0; z = 0;
@@ -439,7 +378,7 @@ function updateOimoPhysics()
                 rigidBodies[0] = world.add({type:'sphere', size:[sphereSize], pos:[x,y,z], move:true, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
                 
                 cameraControlsObject.position.copy(rigidBodies[0].position);
-                worldCamera.position.set(0, 0, 20);
+                worldCamera.position.set(0, 0, initialCameraZ);
 
                 // blackball
                 if (spotBlackBall) 
@@ -682,18 +621,18 @@ function updateVariablesAndUniforms()
                 if ( dollyCameraIn ) 
                 {
                         cameraZOffset -= 1;
-                        if (cameraZOffset < -16)
-                                cameraZOffset = -16;
-                        worldCamera.position.set(0, 0, 20 + cameraZOffset);
+                        if (cameraZOffset < -initialCameraZ)
+                                cameraZOffset = -initialCameraZ;
+                        worldCamera.position.set(0, 0, initialCameraZ + cameraZOffset);
                         cameraIsMoving = true;
                         dollyCameraIn = false;
                 }
                 if ( dollyCameraOut ) 
                 {
                         cameraZOffset += 1;
-                        if (cameraZOffset > 100)
-                                cameraZOffset = 100;
-                        worldCamera.position.set(0, 0, 20 + cameraZOffset);
+                        if (cameraZOffset > 200)
+                                cameraZOffset = 200;
+                        worldCamera.position.set(0, 0, initialCameraZ + cameraZOffset);
                         cameraIsMoving = true;
                         dollyCameraOut = false;
                 }
