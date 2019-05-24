@@ -9,7 +9,6 @@ Desktop Controls
 * SPACEBAR to enter shot mode.  Power will oscillate up and down
 * SPACEBAR again to shoot!
 * when shot has been made and balls are moving, WASD to fly around the scene
-
 <br><br>
 Mobile Controls
 * Swipe to aim cueball
