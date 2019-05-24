@@ -329,7 +329,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		if (intersec.type == REFR)  // Ideal dielectric REFRACTION
 		{
 			nc = 1.0; // IOR of Air
-			nt = 1.3; // IOR of special thin Glass for this game
+			nt = 1.2; // IOR of special thin Glass for this game
 			Re = calcFresnelReflectance(n, nl, r.direction, nc, nt, tdir);
 			Tr = 1.0 - Re;
 
@@ -341,7 +341,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				firstRay = Ray( x, reflect(r.direction, nl) ); // create reflection ray from surface
 				firstRay.origin += nl * uEPS_intersect;
 
-				mask = vec3(5);
+				mask = vec3(4);
 			}
 			
 			// transmit ray through surface
@@ -424,7 +424,7 @@ void SetupScene(void)
 	spheres[6] = Sphere(10.0, uBallPositions[22], L, z, LIGHT); // top left back spherical light
 	spheres[7] = Sphere(10.0, uBallPositions[23], L, z, LIGHT); // top right back spherical light
 	
-	boxes[0] = Box(vec3(-50), vec3(50), z, vec3(0.0, 0.05, 0.99), DIFF); // Diffuse Box
+	boxes[0] = Box(vec3(-50.5), vec3(50.5), z, vec3(0.0, 0.05, 0.99), DIFF); // Diffuse Box
 }
 
 
