@@ -10,6 +10,7 @@ Desktop Controls
 * SPACEBAR again to shoot!
 * when shot has been made and balls are moving, WASD to fly around the scene
 <br><br>
+
 Mobile Controls
 * Swipe to aim cueball
 * Pinch to dolly camera in or out
