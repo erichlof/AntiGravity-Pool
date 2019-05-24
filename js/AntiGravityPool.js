@@ -73,8 +73,8 @@ function initSceneData()
                 ballPositions[i] = new THREE.Vector3();
         }
 
-        //world = new OIMO.World({timestep: mouseControl ? 1/60 : 1/30, worldscale: 1} );
-        world = new OIMO.World();
+        world = new OIMO.World({timestep: mouseControl ? 1/60 : 1/30, worldscale: 1} );
+        //world = new OIMO.World();
         world.gravity = new OIMO.Vec3(0, 0, 0);
 
 
@@ -837,7 +837,7 @@ function updateVariablesAndUniforms()
                 }
         }
 
-        world.timeStep = frameTime;
+        //world.timeStep = frameTime;
         updateOimoPhysics();
         
 
