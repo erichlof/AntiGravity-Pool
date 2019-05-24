@@ -1,7 +1,7 @@
 # AntiGravity-Pool
 The first real-time pathtraced game for desktop and mobile using WebGL. <br>
 Click to Play --> https://erichlof.github.io/AntiGravity-Pool/AntiGravityPool.html
-<br><br>
+<br>
 <h4>Desktop Controls</h4>
 
 * Click anywhere to capture mouse
