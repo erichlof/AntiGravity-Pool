@@ -371,21 +371,15 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				firstMask = mask * Re;
 				firstRay = Ray( x, reflect(r.direction, nl) ); // create reflection ray from surface
 				firstRay.origin += nl * uEPS_intersect;
+				mask *= Tr;
 			}
-			
-			if (bounces > 0 && bounceIsSpecular)
+			else if (rand(seed) < Re)
 			{
-				if (rand(seed) < Re)
-				{	
-					r = Ray( x, reflect(r.direction, nl) );
-					r.origin += nl * uEPS_intersect;
-					continue;	
-				}
+				r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
+				r.origin += nl * uEPS_intersect;
+				continue;
 			}
 			
-			//diffuseCount++;
-
-			mask *= Tr;
 			mask *= intersec.color;
 			
 			bounceIsSpecular = false;
@@ -456,15 +450,14 @@ void main( void )
 	float x = rand(seed);
 	float y = rand(seed);
 
-	if (!uCameraIsMoving)
+	//if (!uCameraIsMoving)
 	{
 		pixelOffset.x = tentFilter(x);
 		pixelOffset.y = tentFilter(y);
 	}
 	
-	
 	// pixelOffset ranges from -1.0 to +1.0, so only need to divide by half resolution
-	pixelOffset /= (uResolution * 1.0); // usually is * 0.5, but in this game, * 1.0 makes the pool balls a little crisper
+	pixelOffset /= (uResolution * 1.0); // normally this is * 0.5, but for dynamic scenes, * 1.0 looks sharper
 
 	// we must map pixelPos into the range -1.0 to +1.0
 	pixelPos = (gl_FragCoord.xy / uResolution) * 2.0 - 1.0;
