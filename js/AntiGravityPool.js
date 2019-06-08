@@ -4,6 +4,7 @@ var sceneIsDynamic = true;
 var camFlightSpeed = 30;
 var initialCameraZ;
 var cameraZOffset = 0;
+var ballObjects = [];
 var ballPositions = [];
 var sphereSize = 2;
 var pocketSize = 10;
@@ -50,6 +51,10 @@ var shotFlip = 1;
 var world = null;
 var rigidBodies = [];
 
+// WebAudio variables
+var audioLoader;
+var listener;
+
 
 // overwrite onMouseWheel function
 function onMouseWheel(event)
@@ -77,16 +82,33 @@ function initSceneData()
         // set camera's field of view
         worldCamera.fov = 40;
         EPS_intersect = mouseControl ? 0.1 : 1.0; // less precision on mobile
-        initialCameraZ = mouseControl ? 8 : 5; // closer to cueball is better for mobile
+        initialCameraZ = mouseControl ? 8 : 0; // close to cueball is better for mobile
 
         for (let i = 0; i < 24; i++)
         {
+                ballObjects[i] = new THREE.Object3D();
                 ballPositions[i] = new THREE.Vector3();
         }
 
-        world = new OIMO.World({timestep: mouseControl ? 1/60 : 1/30, worldscale: 1} );
+        world = new OIMO.World({timestep: 1/60, worldscale: 1} );
         world.gravity = new OIMO.Vec3(0, 0, 0);
 
+        audioLoader = new THREE.AudioLoader();
+	listener = new THREE.AudioListener();
+        worldCamera.add( listener );
+
+        
+        audioLoader.load( 'sounds/ping_pong.mp3', function ( buffer )
+        {
+                for ( let i = 0; i < 16; i ++ ) 
+                {
+                        let audio = new THREE.PositionalAudio( listener );
+                        audio.setBuffer( buffer );
+                        ballObjects[i].add( audio );
+                }
+        } );
+        
+        
         startNewGame();
 
 } // end function initSceneData()
@@ -283,6 +305,9 @@ function updateOimoPhysics()
                         {
                                 if (rigidBodies[i] != null && world.getContact(rigidBodies[i], rigidBodies[j])) 
                                 {
+                                        let audio = ballObjects[i].children[ 0 ];
+                                        audio.play();
+                                        
                                         doGameStateLogic(i);
                                         //console.log("ball " + i + " was pocketed");	
                                 }
@@ -776,8 +801,25 @@ function updateVariablesAndUniforms()
                 }
         }
 
-        //world.timeStep = frameTime;
+        world.timeStep = Math.min(frameTime, 0.03333); // if frameTime takes too long, default to 1/30 sec update
         updateOimoPhysics();
+
+        // update pathtraced sphere ballObjects to match their physics proxy bodies
+        for (let i = 0; i < 24; i++) 
+        {
+                if (rigidBodies[i] == null)
+                {
+                        ballObjects[i].position.set(10000,10000,10000);
+                        ballPositions[i].copy(ballObjects[i].position);
+                        continue;
+                }
+                        
+                ballObjects[i].position.copy(rigidBodies[i].getPosition());
+                //ballRotations[i].copy(rigidBodies[i].getQuaternion());
+
+                ballPositions[i].copy(ballObjects[i].position);
+        }
+
         
 
         if (cameraIsMoving) {
@@ -809,20 +851,6 @@ function updateVariablesAndUniforms()
         pathTracingUniforms.uSampleCounter.value = sampleCounter;
         pathTracingUniforms.uFrameCounter.value = frameCounter;
         //pathTracingUniforms.uRandomVector.value = randomVector.set(Math.random(), Math.random(), Math.random());
-        
-        
-        // update pathtraced sphere ballPositions to match their physics proxy bodies
-        for (let i = 0; i < 24; i++) 
-        {
-                if (rigidBodies[i] == null)
-                {
-                        ballPositions[i].set(10000,10000,10000);
-                        continue;
-                }
-                        
-                ballPositions[i].copy(rigidBodies[i].getPosition());
-                //ballRotations[i].copy(rigidBodies[i].getQuaternion());
-        }
         
         
         // CAMERA
