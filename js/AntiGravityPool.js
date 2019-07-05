@@ -25,6 +25,7 @@ var shotIsInProgress = false;
 var allBallsHaveStopped = true;
 var playerIsAiming = true;
 var launchGhostAimingBall = false;
+var canLaunchGhostAimingBall = false;
 var playerOneTurn = true;
 var playerTwoTurn = false;
 var willBePlayerOneTurn = false;
@@ -82,7 +83,7 @@ function initSceneData()
         // set camera's field of view
         worldCamera.fov = 40;
         EPS_intersect = mouseControl ? 0.1 : 1.0; // less precision on mobile
-        initialCameraZ = mouseControl ? 8 : 0; // close to cueball is better for mobile
+        initialCameraZ = mouseControl ? 8 : 5; // close to cueball is better for mobile
 
         for (let i = 0; i < 24; i++)
         {
@@ -781,11 +782,7 @@ function updateVariablesAndUniforms()
                 }
         } // end if (shotIsInProgress)
 
-        if (playerIsAiming && cameraIsMoving) 
-        {
-                launchGhostAimingBall = true;
-        }
-
+        
         if (isShooting) 
         {
                 shotPower += shotFlip * 0.5 * frameTime;
@@ -823,6 +820,9 @@ function updateVariablesAndUniforms()
         
 
         if (cameraIsMoving) {
+                canLaunchGhostAimingBall = true;
+                launchGhostAimingBall = false;
+
                 sampleCounter = 1.0;
                 frameCounter += 1.0;
 
@@ -833,6 +833,11 @@ function updateVariablesAndUniforms()
         }
 
         if ( !cameraIsMoving ) {
+                if (playerIsAiming && canLaunchGhostAimingBall) 
+                {
+                        launchGhostAimingBall = true;
+                        canLaunchGhostAimingBall = false;
+                }
                 sampleCounter += 1.0; // for progressive refinement of image
                 if (sceneIsDynamic)
                         sampleCounter = 1.0; // reset for continuous updating of image
