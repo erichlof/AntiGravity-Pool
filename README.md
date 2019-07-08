@@ -22,7 +22,6 @@ Click to Play --> https://erichlof.github.io/AntiGravity-Pool/AntiGravityPool.ht
 
 <h2>TODO</h2>
 
-* Add 3D positional sound effects via the WebAudio API
 * Create simple banners to display game state (for example, "Player 1 Wins!")
 * Create widgets to display current target-ball color (red, yellow, or black), as well as shot power meter<br>
 
