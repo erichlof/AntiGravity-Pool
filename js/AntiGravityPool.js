@@ -128,7 +128,7 @@ function initSceneData()
                 }
         } );
 
-        audioLoader.load( 'sounds/click.mp3', function ( buffer )
+        audioLoader.load( 'sounds/click2.mp3', function ( buffer )
         {
                 for ( let i = 0; i < 16; i ++ ) 
                 {
