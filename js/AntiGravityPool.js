@@ -4,8 +4,15 @@ var sceneIsDynamic = true;
 var camFlightSpeed = 30;
 var initialCameraZ;
 var cameraZOffset = 0;
+var poolTableWalls = [];
 var ballObjects = [];
 var ballPositions = [];
+var pocketSounds = [];
+var railWallSounds = [];
+var ballClickSounds = [];
+var cueStickSound = null;
+var chalkSound = null;
+var rackSound = null;
 var sphereSize = 2;
 var pocketSize = 10;
 var pocketPosX = 52;
@@ -42,6 +49,7 @@ var playerOneWins = false;
 var playerTwoWins = false;
 var shouldStartNewGame = false;
 var isBreakShot = true;
+var canPlayBallSounds = false;
 var isShooting = false;
 var canPressSpacebar = false;
 var minShotPower = 0.2;
@@ -96,17 +104,62 @@ function initSceneData()
 
         audioLoader = new THREE.AudioLoader();
 	listener = new THREE.AudioListener();
-        worldCamera.add( listener );
+        cameraControlsObject.add( listener );
 
         
-        audioLoader.load( 'sounds/ping_pong.mp3', function ( buffer )
+        audioLoader.load( 'sounds/pocket.mp3', function ( buffer )
         {
                 for ( let i = 0; i < 16; i ++ ) 
                 {
-                        let audio = new THREE.PositionalAudio( listener );
-                        audio.setBuffer( buffer );
-                        ballObjects[i].add( audio );
+                        pocketSounds[i] = new THREE.PositionalAudio( listener );
+                        pocketSounds[i].setBuffer( buffer );
+                        ballObjects[i].add( pocketSounds[i] );
                 }
+        } );
+
+        audioLoader.load( 'sounds/rail.mp3', function ( buffer )
+        {
+                for ( let i = 0; i < 16; i ++ ) 
+                {
+                        railWallSounds[i] = new THREE.PositionalAudio( listener );
+                        railWallSounds[i].setBuffer( buffer );
+                        railWallSounds[i].setVolume(0.5);
+                        ballObjects[i].add( railWallSounds[i] );
+                }
+        } );
+
+        audioLoader.load( 'sounds/click.mp3', function ( buffer )
+        {
+                for ( let i = 0; i < 16; i ++ ) 
+                {
+                        ballClickSounds[i] = new THREE.PositionalAudio( listener );
+                        ballClickSounds[i].setBuffer( buffer );
+                        ballObjects[i].add( ballClickSounds[i] );
+                }
+        } );
+
+        audioLoader.load( 'sounds/cuestick.mp3', function ( buffer )
+        {
+                cueStickSound = new THREE.PositionalAudio( listener );
+                cueStickSound.setBuffer( buffer );
+                cueStickSound.setVolume(0.1);
+                cameraControlsObject.add(cueStickSound);
+        } );
+
+        audioLoader.load( 'sounds/chalk.mp3', function ( buffer )
+        {
+                chalkSound = new THREE.PositionalAudio( listener );
+                chalkSound.setBuffer( buffer );
+                chalkSound.setVolume(0.1);
+                cameraControlsObject.add(chalkSound);
+        } );
+
+        audioLoader.load( 'sounds/rack.mp3', function ( buffer )
+        {
+                rackSound = new THREE.PositionalAudio( listener );
+                rackSound.setBuffer( buffer );
+                rackSound.setVolume(0.1);
+                cameraControlsObject.add(rackSound);
         } );
         
         
@@ -197,8 +250,10 @@ function createPathTracingMaterial()
 
 function startNewGame() 
 {
+        
         // reset all flags and variables
         isBreakShot = true;
+        canPlayBallSounds = false;
         isShooting = false;
         shotPower = minShotPower;
         shotFlip = 1;
@@ -224,12 +279,12 @@ function startNewGame()
 
         world.clear();
 
-        let tableBoxBottom = world.add({size:[100, 10, 100], pos:[0,-55,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxTop    = world.add({size:[100, 10, 100], pos:[0, 55,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxLeft   = world.add({size:[10, 100, 100], pos:[-55,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxRight  = world.add({size:[10, 100, 100], pos:[ 55,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxBack   = world.add({size:[100, 100, 10], pos:[0,0,-55], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
-        let tableBoxFront  = world.add({size:[100, 100, 10], pos:[0,0, 55], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        poolTableWalls[0] = world.add({size:[100, 10, 100], pos:[0,-55,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        poolTableWalls[1] = world.add({size:[100, 10, 100], pos:[0, 55,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        poolTableWalls[2] = world.add({size:[10, 100, 100], pos:[-55,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        poolTableWalls[3] = world.add({size:[10, 100, 100], pos:[ 55,0,0], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        poolTableWalls[4] = world.add({size:[100, 100, 10], pos:[0,0,-55], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
+        poolTableWalls[5] = world.add({size:[100, 100, 10], pos:[0,0, 55], world:world, density: 1.0, friction: 0.0, restitution: 0.1});
         
         // add static balls for aiming purposes
 
@@ -290,7 +345,11 @@ function startNewGame()
         rigidBodies[22] = world.add({type:'sphere', name:'pocket6', size:[pocketSize], pos:[-pocketPosX, pocketPosY, -pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
         rigidBodies[23] = world.add({type:'sphere', name:'pocket7', size:[pocketSize], pos:[pocketPosX, pocketPosY, -pocketPosZ], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
         
-
+        if (rackSound)
+        {
+                if (!rackSound.isPlaying)
+                        rackSound.play();
+        }
 } // end function startNewGame()
 
 
@@ -300,20 +359,72 @@ function updateOimoPhysics()
         // check for balls being pocketed
         if (!playerIsAiming && shotIsInProgress) 
         {
+                // pocket sound
                 for (let i = 0; i < 16; i++) 
                 {
                         for (let j = 16; j < 24; j++) 
                         {
                                 if (rigidBodies[i] != null && world.getContact(rigidBodies[i], rigidBodies[j])) 
                                 {
-                                        let audio = ballObjects[i].children[ 0 ];
-                                        audio.play();
+                                        if (!pocketSounds[i].isPlaying)
+                                                pocketSounds[i].play();
                                         
                                         doGameStateLogic(i);
                                         //console.log("ball " + i + " was pocketed");	
                                 }
                         }	
                 }
+
+                // rail/wall impact sound
+                for (let i = 0; i < 16; i++) 
+                {
+                        for (let j = 0; j < 6; j++) 
+                        {
+                                if (rigidBodies[i] != null && world.getContact(rigidBodies[i], poolTableWalls[j])) 
+                                {
+                                        if (!railWallSounds[i].isPlaying)
+                                                railWallSounds[i].play();	
+                                }
+                        }	
+                }
+
+                if (!canPlayBallSounds)
+                {
+                        for (let i = 1; i < 24; i++) 
+                        {
+                                if (rigidBodies[0] != null && rigidBodies[i] != null &&
+                                        world.getContact(rigidBodies[0], rigidBodies[i])) 
+                                {
+                                        canPlayBallSounds = true; 	
+                                }
+                        }
+                        for (let j = 0; j < 6; j++) 
+                        {
+                                if (rigidBodies[0] != null && world.getContact(rigidBodies[0], poolTableWalls[j])) 
+                                {
+                                        canPlayBallSounds = true;	
+                                }
+                        }
+                }
+                
+
+                if (canPlayBallSounds)
+                {
+                        // balls impact clacking sound
+                        for (let i = 0; i < 16; i++) 
+                        {
+                                for (let j = 0; j < 16; j++) 
+                                {
+                                        if (rigidBodies[i] != null && rigidBodies[j] != null &&
+                                        i != j && world.getContact(rigidBodies[i], rigidBodies[j])) 
+                                        {
+                                                if (!ballClickSounds[i].isPlaying)
+                                                        ballClickSounds[i].play(); 	
+                                        }
+                                }	
+                        }
+                }
+                
         }
 
         // if shot has been taken and balls are moving, keep checking for all balls to come to rest
@@ -354,6 +465,10 @@ function updateOimoPhysics()
                 // no balls were pocketed, switch turns
                 if (!willBePlayerOneTurn && !willBePlayerTwoTurn) 
                 {
+                        if (!chalkSound.isPlaying)
+                                chalkSound.play();
+                        
+                        
                         if (playerOneTurn) 
                         {
                                 playerOneTurn = false;
@@ -369,12 +484,24 @@ function updateOimoPhysics()
                 { 
                         if (willBePlayerOneTurn) 
                         {
+                                if (!playerOneTurn)
+                                {
+                                        if (!chalkSound.isPlaying)
+                                        chalkSound.play();
+                                }
+                                
                                 playerOneTurn = true;
                                 playerTwoTurn = false;
                                 willBePlayerOneTurn = false; // reset
                         }
                         else if (willBePlayerTwoTurn) 
                         {
+                                if (!playerTwoTurn)
+                                {
+                                        if (!chalkSound.isPlaying)
+                                        chalkSound.play();
+                                }
+                                
                                 playerTwoTurn = true;
                                 playerOneTurn = false;
                                 willBePlayerTwoTurn = false; // reset
@@ -387,6 +514,9 @@ function updateOimoPhysics()
                 // cueball
                 if (spotCueBall) 
                 {
+                        if (!chalkSound.isPlaying)
+                                chalkSound.play();
+                        
                         x = 0; y = 0; z = 40;
                         aimOrigin.set(x, y, z);
                         spotCueBall = false;
@@ -442,12 +572,11 @@ function updateOimoPhysics()
         } // end if (shotIsInProgress && allBallsHaveStopped)
 
 
-        // while aiming, if ghost aiming cueball contacts any other ball, freeze it so 
-        // player can use it to see how much of the object ball is being hit (alignment aid)
+        
         if (playerIsAiming) 
         {
-                // if player has moved the line of aim, keep sending out a ghost aiming cueball
-                // to aid in lining up the shot 
+                // if player has moved the line of aim and comes to rest, send out another
+                 // ghost aiming cueball to aid in lining up the shot 
                 if (launchGhostAimingBall) 
                 {
                         launchGhostAimingBall = false;
@@ -678,6 +807,10 @@ function updateVariablesAndUniforms()
                 }
                 else if (isShooting) 
                 {
+                        if (!cueStickSound.isPlaying)
+                                cueStickSound.play();
+                        
+                        
                         isShooting = false;
                         playerIsAiming = false;
                         shotIsInProgress = true;
