@@ -22,6 +22,7 @@ Click to Play --> https://erichlof.github.io/AntiGravity-Pool/AntiGravityPool.ht
 
 <h2>TODO</h2>
 
+* Squash bugs due to the physics engine: sometimes collisions between balls and rail/walls keep getting reported even after collision has been resolved, resulting in annoying repeating cushion sound effect. Also, sometimes when the player pockets the cueball resulting in a scratch, the cueball is unable to regenerate for the next player and keeps reporting that it is being pocketed in the same old pocket.
 * Create simple banners to display game state (for example, "Player 1 Wins!")
 * Create widgets to display current target-ball color (red, yellow, or black), as well as shot power meter<br>
 
