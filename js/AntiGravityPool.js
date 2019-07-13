@@ -104,15 +104,17 @@ function initSceneData()
 
         audioLoader = new THREE.AudioLoader();
 	listener = new THREE.AudioListener();
-        cameraControlsObject.add( listener );
+        //cameraControlsObject.add( listener );
+        worldCamera.add( listener );
 
         
         audioLoader.load( 'sounds/pocket.mp3', function ( buffer )
         {
-                for ( let i = 0; i < 16; i ++ ) 
+                for ( let i = 16; i < 24; i ++ ) 
                 {
                         pocketSounds[i] = new THREE.PositionalAudio( listener );
                         pocketSounds[i].setBuffer( buffer );
+                        pocketSounds[i].setVolume(2);
                         ballObjects[i].add( pocketSounds[i] );
                 }
         } );
@@ -123,7 +125,7 @@ function initSceneData()
                 {
                         railWallSounds[i] = new THREE.PositionalAudio( listener );
                         railWallSounds[i].setBuffer( buffer );
-                        railWallSounds[i].setVolume(0.5);
+                        railWallSounds[i].setVolume(0.3);
                         ballObjects[i].add( railWallSounds[i] );
                 }
         } );
@@ -142,24 +144,24 @@ function initSceneData()
         {
                 cueStickSound = new THREE.PositionalAudio( listener );
                 cueStickSound.setBuffer( buffer );
-                cueStickSound.setVolume(0.1);
-                cameraControlsObject.add(cueStickSound);
+                cueStickSound.setVolume(0.2);
+                worldCamera.add(cueStickSound);
         } );
 
         audioLoader.load( 'sounds/chalk.mp3', function ( buffer )
         {
                 chalkSound = new THREE.PositionalAudio( listener );
                 chalkSound.setBuffer( buffer );
-                chalkSound.setVolume(0.1);
-                cameraControlsObject.add(chalkSound);
+                chalkSound.setVolume(0.05);
+                worldCamera.add(chalkSound);
         } );
 
         audioLoader.load( 'sounds/rack.mp3', function ( buffer )
         {
                 rackSound = new THREE.PositionalAudio( listener );
                 rackSound.setBuffer( buffer );
-                rackSound.setVolume(0.1);
-                cameraControlsObject.add(rackSound);
+                rackSound.setVolume(0.2);
+                worldCamera.add(rackSound);
         } );
         
         
@@ -356,6 +358,25 @@ function startNewGame()
 
 function updateOimoPhysics() 
 {
+
+        // step physics simulation forward
+        world.step();
+
+        if (playerIsAiming) 
+        {
+                // if player has moved the line of aim and comes to rest, send out another
+                 // ghost aiming cueball to aid in lining up the shot 
+                if (launchGhostAimingBall) 
+                {
+                        launchGhostAimingBall = false;
+                        rigidBodies[0].position.copy(aimOrigin);
+                        rigidBodies[0].linearVelocity.set(0, 0, 0);
+                        rigidBodies[0].angularVelocity.set(0, 0, 0);
+                        aimVector.copy(cameraDirectionVector).multiplyScalar(1000);
+                        rigidBodies[0].applyImpulse(rigidBodies[0].position, aimVector);
+                }
+        }
+
         // check for balls being pocketed
         if (!playerIsAiming && shotIsInProgress) 
         {
@@ -366,8 +387,8 @@ function updateOimoPhysics()
                         {
                                 if (rigidBodies[i] != null && world.getContact(rigidBodies[i], rigidBodies[j])) 
                                 {
-                                        if (!pocketSounds[i].isPlaying)
-                                                pocketSounds[i].play();
+                                        if (!pocketSounds[j].isPlaying)
+                                                pocketSounds[j].play();
                                         
                                         doGameStateLogic(i);
                                         //console.log("ball " + i + " was pocketed");	
@@ -398,13 +419,13 @@ function updateOimoPhysics()
                                         canPlayBallSounds = true; 	
                                 }
                         }
-                        for (let j = 0; j < 6; j++) 
-                        {
-                                if (rigidBodies[0] != null && world.getContact(rigidBodies[0], poolTableWalls[j])) 
-                                {
-                                        canPlayBallSounds = true;	
-                                }
-                        }
+                        // for (let j = 0; j < 6; j++) 
+                        // {
+                        //         if (rigidBodies[0] != null && world.getContact(rigidBodies[0], poolTableWalls[j])) 
+                        //         {
+                        //                 canPlayBallSounds = true;	
+                        //         }
+                        // }
                 }
                 
 
@@ -415,11 +436,14 @@ function updateOimoPhysics()
                         {
                                 for (let j = 0; j < 16; j++) 
                                 {
+                                        if (i==j) continue;
                                         if (rigidBodies[i] != null && rigidBodies[j] != null &&
-                                        i != j && world.getContact(rigidBodies[i], rigidBodies[j])) 
+                                                world.getContact(rigidBodies[i], rigidBodies[j])) 
                                         {
                                                 if (!ballClickSounds[i].isPlaying)
-                                                        ballClickSounds[i].play(); 	
+                                                        ballClickSounds[i].play();
+                                                //if (!ballClickSounds[j].isPlaying)
+                                                  //      ballClickSounds[j].play();	
                                         }
                                 }	
                         }
@@ -487,7 +511,7 @@ function updateOimoPhysics()
                                 if (!playerOneTurn)
                                 {
                                         if (!chalkSound.isPlaying)
-                                        chalkSound.play();
+                                                chalkSound.play();
                                 }
                                 
                                 playerOneTurn = true;
@@ -499,7 +523,7 @@ function updateOimoPhysics()
                                 if (!playerTwoTurn)
                                 {
                                         if (!chalkSound.isPlaying)
-                                        chalkSound.play();
+                                                chalkSound.play();
                                 }
                                 
                                 playerTwoTurn = true;
@@ -528,9 +552,11 @@ function updateOimoPhysics()
                         x = rigidBodies[0].position.x;
                         y = rigidBodies[0].position.y;
                         z = rigidBodies[0].position.z;
+                        
                         rigidBodies[0].remove();
                         rigidBodies[0] = null;
                 }
+                
                 rigidBodies[0] = world.add({type:'sphere', size:[sphereSize], pos:[x,y,z], move:true, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
                 
                 cameraControlsObject.position.copy(rigidBodies[0].position);
@@ -573,23 +599,9 @@ function updateOimoPhysics()
 
 
         
-        if (playerIsAiming) 
-        {
-                // if player has moved the line of aim and comes to rest, send out another
-                 // ghost aiming cueball to aid in lining up the shot 
-                if (launchGhostAimingBall) 
-                {
-                        launchGhostAimingBall = false;
-                        rigidBodies[0].position.copy(aimOrigin);
-                        rigidBodies[0].linearVelocity.set(0, 0, 0);
-                        rigidBodies[0].angularVelocity.set(0, 0, 0);
-                        aimVector.copy(cameraDirectionVector).multiplyScalar(1000);
-                        rigidBodies[0].applyImpulse(rigidBodies[0].position, aimVector);
-                }
-        }
+        
 
-        // step physics simulation forward
-        world.step();
+        
 
         
 } // end function updateOimoPhysics()
@@ -940,11 +952,13 @@ function updateVariablesAndUniforms()
                 if (rigidBodies[i] == null)
                 {
                         ballObjects[i].position.set(10000,10000,10000);
+                        ballObjects[i].updateMatrixWorld(true);
                         ballPositions[i].copy(ballObjects[i].position);
                         continue;
                 }
                         
                 ballObjects[i].position.copy(rigidBodies[i].getPosition());
+                ballObjects[i].updateMatrixWorld(true);
                 //ballRotations[i].copy(rigidBodies[i].getQuaternion());
 
                 ballPositions[i].copy(ballObjects[i].position);
@@ -993,6 +1007,7 @@ function updateVariablesAndUniforms()
         
         // CAMERA
         cameraControlsObject.updateMatrixWorld(true);
+        worldCamera.updateMatrixWorld(true);
         pathTracingUniforms.uCameraMatrix.value.copy(worldCamera.matrixWorld);
         screenOutputMaterial.uniforms.uOneOverSampleCounter.value = 1.0 / sampleCounter;
 
