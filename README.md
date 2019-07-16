@@ -22,6 +22,7 @@ Click to Play --> https://erichlof.github.io/AntiGravity-Pool/AntiGravityPool.ht
 
 <h2>TODO</h2>
 
+* Squash sound fx bug due to the physics engine continually reporting collisions between balls and between balls and rails/walls. This results in sound fx playing repeatedly until the offending ball is pocketed. This bug is highly annoying so it gets the highest priority!
 * Create simple banners to display game state (for example, "Player 1 Wins!")
 * Create widgets to display current target-ball color (red, yellow, or black), as well as shot power meter<br>
 
