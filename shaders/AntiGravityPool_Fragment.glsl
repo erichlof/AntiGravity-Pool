@@ -63,7 +63,7 @@ float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 norm
 	return INFINITY;
 }
 
-float samplePartialSphereLight(vec3 x, vec3 nl, out vec3 dirToLight, Sphere light, float percentageRadius, inout uvec2 seed)
+float samplePartialSphereLight(vec3 x, vec3 nl, inout vec3 dirToLight, Sphere light, float percentageRadius, inout uvec2 seed)
 {
 	vec3 randPointOnLight = light.position + (randomSphereDirection(seed) * light.radius * percentageRadius);
 	dirToLight = randPointOnLight - x;
@@ -83,7 +83,7 @@ float samplePartialSphereLight(vec3 x, vec3 nl, out vec3 dirToLight, Sphere ligh
 float SceneIntersect( Ray r, inout Intersection intersec )
 //-----------------------------------------------------------------------
 {
-	float d;
+	float d = INFINITY;
 	float t = INFINITY;
 	vec3 n;
 	
@@ -188,8 +188,6 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 	float nc, nt, Re, Tr;
 	float weight;
 	float randChoose;
-	
-	int diffuseCount = 0;
 
 	bool bounceIsSpecular = true;
 	bool sampleLight = false;
@@ -212,17 +210,21 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				rayHitIsDynamic = false;
 		}
 		 
-		/*
 		//not used in this scene because we are inside a large box shape - no rays can escape
-		if (t == INFINITY)
-		{
-                        break;
-		}
-		*/
+		// if (t == INFINITY)
+		// {
+                //         break;
+		// }
 		
 		
 		if (intersec.type == LIGHT)
 		{	
+			if (bounces == 0)
+			{
+				accumCol = mask * intersec.emission;
+				break;
+			}
+
 			if (firstTypeWasDIFF)
 			{
 				if (!shadowTime) 
@@ -293,14 +295,9 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				accumCol += mask * intersec.emission; // add reflective result to the refractive result (if any)
 				break;	
 			}
-			
-			if (sampleLight)
-				accumCol = mask * intersec.emission;
-			if (bounceIsSpecular)
-				accumCol = mask * clamp(intersec.emission, 0.0, 1.0); // looking directly at light or through a SPEC reflection
-			
-			// reached a light, so we can exit
+
 			break;
+			
 		} // end if (intersec.type == LIGHT)
 
 
@@ -368,8 +365,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		for (int i = 0; i < N_SPHERES; i++)
 		{
 			aTest = dot(nl, normalize(spheres[i].position - x));
-			//aTest += (1.0 / distance(x, spheres[i].position));
-			aTest += (rand(seed) * 2.0 - 1.0);
+			aTest += (rand(seed) * 2.0 - 1.0) * 2.0;
 			if (aTest > angleToNearestLight)
 			{
 				angleToNearestLight = aTest;
@@ -383,16 +379,17 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		    
                 if (intersec.type == DIFF) // Ideal DIFFUSE reflection
 		{
-			diffuseCount++;
 
 			mask *= intersec.color;
 			
 			bounceIsSpecular = false;
 
-			if (bounces == 0)// && !firstTypeWasDIFF && !firstTypeWasREFR && !firstTypeWasCOAT)
+			if (bounces == 0)
 			{	
 				// save intersection data for future shadowray trace
 				firstTypeWasDIFF = true;
+				firstTypeWasREFR = false;
+				firstTypeWasCOAT = false;
 				weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.3, seed);
 				firstMask = mask * weight;
                                 firstRay = Ray( x, normalize(dirToLight) ); // create shadow ray pointed towards light
@@ -412,7 +409,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 
 			sampleLight = true;
 			continue;
-                        
+			
 		} // end if (intersec.type == DIFF)
 		
 		/* if (intersec.type == SPEC)  // Ideal SPECULAR reflection
@@ -433,10 +430,12 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 			Re = calcFresnelReflectance(n, nl, r.direction, nc, nt, tdir);
 			Tr = 1.0 - Re;
 
-			if (bounces == 0)// && !firstTypeWasREFR && !firstTypeWasDIFF && !firstTypeWasCOAT)
+			if (bounces == 0)
 			{	
 				// save intersection data for future reflection trace
 				firstTypeWasREFR = true;
+				firstTypeWasDIFF = false;
+				firstTypeWasCOAT = false;
 				firstMask = mask * Re;
 				firstRay = Ray( x, reflect(r.direction, nl) ); // create reflection ray from surface
 				firstRay.origin += nl * uEPS_intersect;
@@ -463,35 +462,28 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 			Re = calcFresnelReflectance(n, nl, r.direction, nc, nt, tdir);
 			Tr = 1.0 - Re;
 
-			if (bounces == 0)// && !firstTypeWasCOAT && !firstTypeWasDIFF && !firstTypeWasREFR)
+			if (bounces == 0)
 			{	
 				// save intersection data for future reflection trace
 				firstTypeWasCOAT = true;
+				//firstTypeWasDIFF = false;
+				//firstTypeWasREFR = false;
 				firstMask = mask * Re;
 				firstRay = Ray( x, reflect(r.direction, nl) ); // create reflection ray from surface
 				firstRay.origin += nl * uEPS_intersect;
 				mask *= Tr;
 			}
-			if (bounces > 0 && rand(seed) < Re)
-			{
-				r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
-				r.origin += nl * uEPS_intersect;
-				continue;
-			}
+			// else if (firstTypeWasCOAT && rand(seed) < Re)
+			// {
+			// 	r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
+			// 	r.origin += nl * uEPS_intersect;
+			// 	continue;
+			// }
 			
-			diffuseCount++;
 
 			mask *= intersec.color;
 			
 			bounceIsSpecular = false;
-
-			// if (bounces == 0 && rand(seed) < diffuseColorBleeding)
-                        // {
-                        //         // choose random Diffuse sample vector
-			// 	r = Ray( x, normalize(randomCosWeightedDirectionInHemisphere(nl, seed)) );
-			// 	r.origin += nl * uEPS_intersect;
-			// 	continue;
-                        // }
 
 			weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.3, seed);
 			mask *= clamp(weight, 0.0, 1.0);
