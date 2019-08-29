@@ -295,8 +295,6 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				accumCol += mask * intersec.emission; // add reflective result to the refractive result (if any)
 				break;	
 			}
-
-			break;
 			
 		} // end if (intersec.type == LIGHT)
 
@@ -365,7 +363,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		for (int i = 0; i < N_SPHERES; i++)
 		{
 			aTest = dot(nl, normalize(spheres[i].position - x));
-			aTest += (rand(seed) * 2.0 - 1.0) * 2.0;
+			aTest += (rand(seed) * 2.0 - 1.0);
 			if (aTest > angleToNearestLight)
 			{
 				angleToNearestLight = aTest;
@@ -390,7 +388,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				firstTypeWasDIFF = true;
 				firstTypeWasREFR = false;
 				firstTypeWasCOAT = false;
-				weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.3, seed);
+				weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.2, seed);
 				firstMask = mask * weight;
                                 firstRay = Ray( x, normalize(dirToLight) ); // create shadow ray pointed towards light
 				firstRay.origin += nl * uEPS_intersect;
@@ -401,7 +399,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				continue;
 			}
 			
-			weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.3, seed);
+			weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.2, seed);
 			mask *= clamp(weight, 0.0, 1.0);
 
 			r = Ray( x, normalize(dirToLight) );
@@ -485,7 +483,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 			
 			bounceIsSpecular = false;
 
-			weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.3, seed);
+			weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.2, seed);
 			mask *= clamp(weight, 0.0, 1.0);
 			
 			r = Ray( x, normalize(dirToLight) );
