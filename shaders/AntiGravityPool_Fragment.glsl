@@ -63,19 +63,24 @@ float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 norm
 	return INFINITY;
 }
 
-float samplePartialSphereLight(vec3 x, vec3 nl, inout vec3 dirToLight, Sphere light, float percentageRadius, inout uvec2 seed)
+vec3 samplePartialSphereLight(vec3 nl, vec3 dirToLight, Sphere light, float percentageRadius, out float weight, inout uvec2 seed)
 {
-	vec3 randPointOnLight = light.position + (randomSphereDirection(seed) * light.radius * percentageRadius);
-	dirToLight = randPointOnLight - x;
+	float cos_alpha_max = sqrt(1.0 - clamp((light.radius * light.radius) / dot(dirToLight, dirToLight), 0.0, 1.0));
 	
-	float r2 = light.radius * light.radius;
-	float d2 = dot(dirToLight, dirToLight);
-	float cos_a_max = sqrt(1.0 - clamp( r2 / d2, 0.0, 1.0));
+	float cos_alpha = mix( cos_alpha_max, 1.0, rand(seed) ); // 1.0 + (rand(seed) * (cos_alpha_max - 1.0));
+	
+	float sin_alpha = sqrt(max(0.0, 1.0 - cos_alpha * cos_alpha)) * percentageRadius; 
+	float phi = rand(seed) * TWO_PI;
 
 	dirToLight = normalize(dirToLight);
-	float dotNlRayDir = max(0.0, dot(nl, dirToLight));
+	vec3 u = normalize( cross( abs(dirToLight.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0), dirToLight ) );
+	vec3 v = cross(dirToLight, u);
+
+	vec3 sampleDir = normalize(u * cos(phi) * sin_alpha + v * sin(phi) * sin_alpha + dirToLight * cos_alpha);
+	float dotNlSampleDir = max(0.0, dot(nl, sampleDir));
+	weight = clamp(2.0 * (1.0 - cos_alpha_max) * dotNlSampleDir, 0.0, 1.0);
 	
-	return 2.0 * (1.0 - cos_a_max) * dotNlRayDir;
+	return sampleDir;
 }
 
 
@@ -183,7 +188,6 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 	vec3 tdir;
 	vec3 x, n, nl;
         
-	float diffuseColorBleeding = 0.2; // range: 0.0 - 0.5, amount of color bleeding between surfaces
 	float t;
 	float nc, nt, ratioIoR, Re, Tr;
 	float weight;
@@ -388,7 +392,8 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				firstTypeWasDIFF = true;
 				firstTypeWasREFR = false;
 				firstTypeWasCOAT = false;
-				weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.2, seed);
+				dirToLight = lightChoice.position - x; // no normalize (for distance calc)
+				dirToLight = samplePartialSphereLight(nl, dirToLight, lightChoice, 0.15, weight, seed);
 				firstMask = mask * weight;
                                 firstRay = Ray( x, normalize(dirToLight) ); // create shadow ray pointed towards light
 				firstRay.origin += nl * uEPS_intersect;
@@ -399,8 +404,9 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				continue;
 			}
 			
-			weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.2, seed);
-			mask *= clamp(weight, 0.0, 1.0);
+			dirToLight = lightChoice.position - x; // no normalize (for distance calc)
+			dirToLight = samplePartialSphereLight(nl, dirToLight, lightChoice, 0.15, weight, seed);
+			mask *= weight;
 
 			r = Ray( x, normalize(dirToLight) );
 			r.origin += nl * uEPS_intersect;
@@ -478,20 +484,21 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				firstRay.origin += nl * uEPS_intersect;
 				mask *= Tr;
 			}
-			// else if (firstTypeWasCOAT && rand(seed) < Re)
-			// {
-			// 	r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
-			// 	r.origin += nl * uEPS_intersect;
-			// 	continue;
-			// }
+			else if (rand(seed) < Re)
+			{
+				r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
+				r.origin += nl * uEPS_intersect;
+				continue;
+			}
 			
 
 			mask *= intersec.color;
 			
 			bounceIsSpecular = false;
 
-			weight = samplePartialSphereLight(x, nl, dirToLight, lightChoice, 0.2, seed);
-			mask *= clamp(weight, 0.0, 1.0);
+			dirToLight = lightChoice.position - x; // no normalize (for distance calc)
+			dirToLight = samplePartialSphereLight(nl, dirToLight, lightChoice, 0.2, weight, seed);
+			mask *= weight;
 			
 			r = Ray( x, normalize(dirToLight) );
 			r.origin += nl * uEPS_intersect;
