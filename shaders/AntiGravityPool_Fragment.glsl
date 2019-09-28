@@ -63,8 +63,9 @@ float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 norm
 	return INFINITY;
 }
 
-vec3 samplePartialSphereLight(vec3 nl, vec3 dirToLight, Sphere light, float percentageRadius, out float weight, inout uvec2 seed)
+vec3 samplePartialSphereLight(vec3 x, vec3 nl, Sphere light, float percentageRadius, vec3 dirToLight, out float weight, inout uvec2 seed)
 {
+	dirToLight = (light.position - x); // no normalize (for distance calc below)
 	float cos_alpha_max = sqrt(1.0 - clamp((light.radius * light.radius) / dot(dirToLight, dirToLight), 0.0, 1.0));
 	
 	float cos_alpha = mix( cos_alpha_max, 1.0, rand(seed) ); // 1.0 + (rand(seed) * (cos_alpha_max - 1.0));
@@ -392,8 +393,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				firstTypeWasDIFF = true;
 				firstTypeWasREFR = false;
 				firstTypeWasCOAT = false;
-				dirToLight = lightChoice.position - x; // no normalize (for distance calc)
-				dirToLight = samplePartialSphereLight(nl, dirToLight, lightChoice, 0.15, weight, seed);
+				dirToLight = samplePartialSphereLight(x, nl, lightChoice, 0.15, dirToLight, weight, seed);
 				firstMask = mask * weight;
                                 firstRay = Ray( x, normalize(dirToLight) ); // create shadow ray pointed towards light
 				firstRay.origin += nl * uEPS_intersect;
@@ -404,8 +404,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				continue;
 			}
 			
-			dirToLight = lightChoice.position - x; // no normalize (for distance calc)
-			dirToLight = samplePartialSphereLight(nl, dirToLight, lightChoice, 0.15, weight, seed);
+			dirToLight = samplePartialSphereLight(x, nl, lightChoice, 0.15, dirToLight, weight, seed);
 			mask *= weight;
 
 			r = Ray( x, normalize(dirToLight) );
@@ -496,8 +495,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 			
 			bounceIsSpecular = false;
 
-			dirToLight = lightChoice.position - x; // no normalize (for distance calc)
-			dirToLight = samplePartialSphereLight(nl, dirToLight, lightChoice, 0.2, weight, seed);
+			dirToLight = samplePartialSphereLight(x, nl, lightChoice, 0.2, dirToLight, weight, seed);
 			mask *= weight;
 			
 			r = Ray( x, normalize(dirToLight) );
@@ -582,7 +580,7 @@ void main( void )
 	vec3 focalPoint = uFocusDistance * rayDir;
 	float randomAngle = rand(seed) * TWO_PI; // pick random point on aperture
 	float randomRadius = rand(seed) * uApertureSize;
-	vec3  randomAperturePos = ( cos(randomAngle) * camRight + sin(randomAngle) * camUp ) * randomRadius;
+	vec3  randomAperturePos = ( cos(randomAngle) * camRight + sin(randomAngle) * camUp ) * sqrt(randomRadius);
 	// point on aperture to focal point
 	vec3 finalRayDir = normalize(focalPoint - randomAperturePos);
 	
