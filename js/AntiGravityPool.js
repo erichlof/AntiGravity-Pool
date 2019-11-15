@@ -90,7 +90,7 @@ function initSceneData()
         
         // set camera's field of view
         worldCamera.fov = 40;
-        EPS_intersect = mouseControl ? 0.1 : 1.0; // less precision on mobile
+        EPS_intersect = mouseControl ? 0.01 : 1.0; // less precision on mobile
         initialCameraZ = mouseControl ? 8 : 0; // close to cueball is better for mobile
 
         for (let i = 0; i < 24; i++)
