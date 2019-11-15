@@ -257,10 +257,10 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 			{
 				if (!reflectionTime) 
 				{
-					if (sampleLight)
+					if (sampleLight || bounceIsSpecular)
 						accumCol = mask * intersec.emission;
-					if (bounceIsSpecular)
-					 	accumCol = mask * clamp(intersec.emission, 0.0, 0.1);
+					//if (bounceIsSpecular)
+					 //	accumCol = mask * clamp(intersec.emission, 0.0, 0.1);
 					
 					// start back at the refractive surface, but this time follow reflective branch
 					r = firstRay;
@@ -508,7 +508,8 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		
 	} // end for (int bounces = 0; bounces < 5; bounces++)
 	
-	return accumCol;      
+	return max(vec3(0), accumCol);
+
 } // end vec3 CalculateRadiance( Ray r, inout uvec2 seed )
 
 
