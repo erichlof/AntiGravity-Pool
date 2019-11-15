@@ -226,7 +226,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 		{	
 			if (bounces == 0)
 			{
-				accumCol = mask * intersec.emission;
+				accumCol = mask * clamp(intersec.emission, 0.0, 2.0);
 				break;
 			}
 
@@ -257,10 +257,10 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 			{
 				if (!reflectionTime) 
 				{
-					if (sampleLight || bounceIsSpecular)
+					if (sampleLight)
 						accumCol = mask * intersec.emission;
-					//if (bounceIsSpecular)
-					 //	accumCol = mask * clamp(intersec.emission, 0.0, 0.1);
+					if (bounceIsSpecular)
+					 	accumCol = mask * clamp(intersec.emission, 0.0, 1.0);
 					
 					// start back at the refractive surface, but this time follow reflective branch
 					r = firstRay;
@@ -518,7 +518,7 @@ void SetupScene(void)
 //-----------------------------------------------------------------------
 {
 	vec3 z = vec3(0);
-	vec3 L = vec3(1, 1, 1) * 20.0; // bright White light
+	vec3 L = vec3(1, 1, 1) * 30.0; // bright White light
 	
         spheres[0] = Sphere(10.0, uBallPositions[16], L, z, LIGHT); // bottom left front spherical light
 	spheres[1] = Sphere(10.0, uBallPositions[17], L, z, LIGHT); // bottom right front spherical light
