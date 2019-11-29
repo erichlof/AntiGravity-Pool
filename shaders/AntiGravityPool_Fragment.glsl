@@ -79,11 +79,10 @@ vec3 samplePartialSphereLight(vec3 x, vec3 nl, Sphere light, float percentageRad
 	float signf = dirToLight.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + dirToLight.z);
 	float b = dirToLight.x * dirToLight.y * a;
-	vec3 T = vec3( b, signf + dirToLight.y * dirToLight.y * a, -dirToLight.y );
-	vec3 B = vec3( 1.0 + signf * dirToLight.x * dirToLight.x * a, signf * b, -signf * dirToLight.x );
+	vec3 T = vec3( 1.0 + signf * dirToLight.x * dirToLight.x * a, signf * b, -signf * dirToLight.x );
+	vec3 B = vec3( b, signf + dirToLight.y * dirToLight.y * a, -dirToLight.y );
 	
 	vec3 sampleDir = normalize(T * cos(phi) * sin_alpha + B * sin(phi) * sin_alpha + dirToLight * cos_alpha);
-	
 	weight = clamp(2.0 * (1.0 - cos_alpha_max) * max(0.0, dot(nl, sampleDir)), 0.0, 1.0);
 	
 	return sampleDir;
