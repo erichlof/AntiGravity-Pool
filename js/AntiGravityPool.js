@@ -183,7 +183,6 @@ function initPathTracingShaders()
                 tPreviousTexture: { type: "t", value: screenTextureRenderTarget.texture },
                 
                 uCameraIsMoving: { type: "b1", value: false },
-                uCameraJustStartedMoving: { type: "b1", value: false },
                 uShotIsInProgress: { type: "b1", value: false },
         
                 uEPS_intersect: { type: "f", value: EPS_intersect },
@@ -965,6 +964,20 @@ function updateVariablesAndUniforms()
         }
 
         
+        if ( !cameraIsMoving ) {
+                if (playerIsAiming && canLaunchGhostAimingBall) 
+                {
+                        launchGhostAimingBall = true;
+                        canLaunchGhostAimingBall = false;
+                }
+                if (sceneIsDynamic)
+                        sampleCounter = 1.0; // reset for continuous updating of image
+                else sampleCounter += 1.0; // for progressive refinement of image
+                
+                frameCounter  += 1.0;
+
+                cameraRecentlyMoving = false;  
+        }
 
         if (cameraIsMoving) {
                 canLaunchGhostAimingBall = true;
@@ -974,32 +987,16 @@ function updateVariablesAndUniforms()
                 frameCounter += 1.0;
 
                 if (!cameraRecentlyMoving) {
-                        cameraJustStartedMoving = true;
+                        frameCounter = 1.0;
                         cameraRecentlyMoving = true;
                 }
         }
 
-        if ( !cameraIsMoving ) {
-                if (playerIsAiming && canLaunchGhostAimingBall) 
-                {
-                        launchGhostAimingBall = true;
-                        canLaunchGhostAimingBall = false;
-                }
-                sampleCounter += 1.0; // for progressive refinement of image
-                if (sceneIsDynamic)
-                        sampleCounter = 1.0; // reset for continuous updating of image
-                
-                frameCounter  += 1.0;
-                if (cameraRecentlyMoving)
-                        frameCounter = 1.0;
-
-                cameraRecentlyMoving = false;  
-        }
+        
 
         pathTracingUniforms.uTime.value = elapsedTime;
         pathTracingUniforms.uShotIsInProgress.value = shotIsInProgress;
         pathTracingUniforms.uCameraIsMoving.value = cameraIsMoving;
-        pathTracingUniforms.uCameraJustStartedMoving.value = cameraJustStartedMoving;
         pathTracingUniforms.uSampleCounter.value = sampleCounter;
         pathTracingUniforms.uFrameCounter.value = frameCounter;
         //pathTracingUniforms.uRandomVector.value = randomVector.set(Math.random(), Math.random(), Math.random());
