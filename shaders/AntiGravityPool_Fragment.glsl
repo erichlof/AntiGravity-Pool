@@ -217,7 +217,7 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 
 		t = SceneIntersect(r, intersec);
 
-		if (bounces == 0)
+		if (diffuseCount == 0)
 		{
 			if (intersec.type == COAT)
 				rayHitIsDynamic = false;
@@ -333,11 +333,11 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				break;	
 			}
 
-			//if (sampleLight || bounceIsSpecular)
-			//	accumCol = mask * intersec.emission; // looking at light through a reflection
+			if (sampleLight || bounceIsSpecular)
+				accumCol = mask * intersec.emission; // looking at light through a reflection
 			
-			// reached a light, so we can exit
-			// break;
+			//reached a light, so we can exit
+			break;
 
 		} // end if (intersec.type == LIGHT)
 
@@ -502,12 +502,12 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				mask = vec3(4);
 				mask *= Tr;
 			}
-			else if (firstTypeWasREFR && !reflectionTime && rand(seed) < Re)
-			{
-				r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
-				r.origin += nl * uEPS_intersect;
-				continue;
-			}
+			// else if (firstTypeWasREFR && rand(seed) < Re)
+			// {
+			// 	r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
+			// 	r.origin += nl * uEPS_intersect;
+			// 	continue;
+			// }
 			
 			// transmit ray through surface
 			tdir = r.direction; // this lets the viewing ray pass through without bending due to refraction
