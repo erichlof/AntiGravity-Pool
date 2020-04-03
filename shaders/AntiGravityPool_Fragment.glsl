@@ -180,7 +180,7 @@ float SceneIntersect( Ray r, inout Intersection intersec )
 
 
 //---------------------------------------------------------------------------
-vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
+vec3 CalculateRadiance( Ray r, inout uvec2 seed )
 //---------------------------------------------------------------------------
 {
 	Intersection intersec;
@@ -217,11 +217,6 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 
 		t = SceneIntersect(r, intersec);
 
-		if (diffuseCount == 0)
-		{
-			if (intersec.type == COAT)
-				rayHitIsDynamic = false;
-		}
 		 
 		// //not used in this scene because we are inside a large box shape - no rays can escape
 		// if (t == INFINITY)
@@ -244,8 +239,8 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				{
 					if (sampleLight)
 						accumCol = mask * intersec.emission * 0.5;
-					else if (bounceIsSpecular)
-						accumCol = mask * intersec.emission;
+					// else if (bounceIsSpecular)
+					// 	accumCol = mask * intersec.emission;
 					
 					// start back at the diffuse surface, but this time follow shadow ray branch
 					r = firstRay;
@@ -259,7 +254,8 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 					continue;
 				}
 				
-				accumCol += mask * intersec.emission * 0.5; // add shadow ray result to the colorbleed result (if any)
+				if (sampleLight)
+					accumCol += mask * intersec.emission * 0.5; // add shadow ray result to the colorbleed result (if any)
 				
 				break;	
 			}
@@ -312,7 +308,8 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				if (!reflectionTime)
 				{
 					// add initial shadow ray result to secondary shadow ray result (if any) 
-					accumCol += mask * intersec.emission * 0.5;
+					if (sampleLight)
+						accumCol += mask * intersec.emission * 0.5;
 
 					// start back at the coat surface, but this time follow reflective branch
 					r = firstRay;
@@ -333,11 +330,11 @@ vec3 CalculateRadiance( Ray r, inout uvec2 seed, inout bool rayHitIsDynamic )
 				break;	
 			}
 
-			if (sampleLight || bounceIsSpecular)
-				accumCol = mask * intersec.emission; // looking at light through a reflection
+			// if (sampleLight || bounceIsSpecular)
+			// 	accumCol = mask * intersec.emission; // looking at light through a reflection
 			
 			//reached a light, so we can exit
-			break;
+			//break;
 
 		} // end if (intersec.type == LIGHT)
 
@@ -663,11 +660,9 @@ void main( void )
 	Ray ray = Ray( cameraPosition + randomAperturePos, finalRayDir );
 
 	SetupScene(); 
-
-	bool rayHitIsDynamic = true;
 	
 	// perform path tracing and get resulting pixel color
-	vec3 pixelColor = CalculateRadiance( ray, seed, rayHitIsDynamic );
+	vec3 pixelColor = CalculateRadiance( ray, seed );
 	
 	vec4 previousImage = texelFetch(tPreviousTexture, ivec2(gl_FragCoord.xy), 0);
 	vec3 previousColor = previousImage.rgb;
@@ -677,16 +672,11 @@ void main( void )
                 previousColor *= 0.6; // motion-blur trail amount (old image)
                 pixelColor *= 0.4; // brightness of new image (noisy)
         }
-	else if (previousImage.a > 0.0)
-	{
-                previousColor *= 0.8; // motion-blur trail amount (old image)
-                pixelColor *= 0.2; // brightness of new image (noisy)
-        }
 	else
 	{
-                previousColor *= 0.94; // motion-blur trail amount (old image)
-                pixelColor *= 0.06; // brightness of new image (noisy)
+                previousColor *= 0.9; // motion-blur trail amount (old image)
+                pixelColor *= 0.1; // brightness of new image (noisy)
         }
 	
-        out_FragColor = vec4( pixelColor + previousColor, rayHitIsDynamic? 1.0 : 0.0 );	
+        out_FragColor = vec4( pixelColor + previousColor, 1.0 );	
 }
