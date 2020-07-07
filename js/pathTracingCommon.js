@@ -209,13 +209,12 @@ THREE.ShaderChunk[ 'pathtracing_disk_intersect' ] = `
 float DiskIntersect( float radius, vec3 pos, vec3 normal, Ray r )
 //-----------------------------------------------------------------------
 {
-	vec3 n = normalize(-normal);
 	vec3 pOrO = pos - r.origin;
-	float denom = dot(n, r.direction);
+	float denom = dot(-normal, r.direction);
 	// use the following for one-sided disk
 	//if (denom <= 0.0) return INFINITY;
 	
-        float result = dot(pOrO, n) / denom;
+        float result = dot(pOrO, -normal) / denom;
 	if (result < 0.0) return INFINITY;
 
         vec3 intersectPos = r.origin + r.direction * result;
@@ -277,7 +276,7 @@ float SlabIntersect( float radius, vec3 normal, Ray r, out vec3 n )
 
 THREE.ShaderChunk[ 'pathtracing_sphere_intersect' ] = `
 
-bool solveQuadratic(float A, float B, float C, out float t0, out float t1)
+/* bool solveQuadratic(float A, float B, float C, out float t0, out float t1)
 {
 	float discrim = B * B - 4.0 * A * C;
     
@@ -287,15 +286,29 @@ bool solveQuadratic(float A, float B, float C, out float t0, out float t1)
 	float rootDiscrim = sqrt(discrim);
 
 	float Q = (B > 0.0) ? -0.5 * (B + rootDiscrim) : -0.5 * (B - rootDiscrim); 
-	//float t_0 = Q / A; 
-	//float t_1 = C / Q;
-	//t0 = min( t_0, t_1 );
-	//t1 = max( t_0, t_1 );
+	// float t_0 = Q / A; 
+	// float t_1 = C / Q;
+	// t0 = min( t_0, t_1 );
+	// t1 = max( t_0, t_1 );
 
 	t1 = Q / A; 
 	t0 = C / Q;
 	
 	return true;
+} */
+
+// optimized algorithm for solving quadratic equations developed by Dr. Po-Shen Loh -> https://youtu.be/XKBX0r3J-9Y
+// Adapted to root finding (ray t0/t1) for all quadric shapes (sphere, ellipsoid, cylinder, cone, etc.) by Erich Loftis
+void solveQuadratic(float A, float B, float C, out float t0, out float t1)
+{
+	float invA = 1.0 / A;
+	B *= invA;
+	C *= invA;
+	float neg_halfB = -B * 0.5;
+	float u2 = neg_halfB * neg_halfB - C;
+	float u = u2 < 0.0 ? neg_halfB = 0.0 : sqrt(u2);
+	t0 = neg_halfB - u;
+	t1 = neg_halfB + u;
 }
 
 
@@ -303,23 +316,15 @@ bool solveQuadratic(float A, float B, float C, out float t0, out float t1)
 float SphereIntersect( float rad, vec3 pos, Ray ray )
 //-----------------------------------------------------------------------
 {
-	float t = INFINITY;
 	float t0, t1;
 	vec3 L = ray.origin - pos;
 	float a = dot( ray.direction, ray.direction );
 	float b = 2.0 * dot( ray.direction, L );
 	float c = dot( L, L ) - (rad * rad);
 
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
-	
-	if ( t0 > 0.0 )
-		return t0;
+	solveQuadratic(a, b, c, t0, t1);
 
-	if ( t1 > 0.0 )
-		return t1;
-		
-	return INFINITY;
+	return t0 > 0.0 ? t0 : t1 > 0.0 ? t1 : INFINITY;
 }
 
 `;
@@ -331,7 +336,6 @@ float EllipsoidParamIntersect( float yMinPercent, float yMaxPercent, float phiMa
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t = INFINITY;
 	float t0, t1, phi;
 
 	// implicit equation of a unit (radius of 1) sphere:
@@ -340,8 +344,7 @@ float EllipsoidParamIntersect( float yMinPercent, float yMaxPercent, float phiMa
 	float b = 2.0 * dot(rd, ro);
 	float c = dot(ro, ro) - 1.0;
 
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 	
 	if ( t0 > 0.0 )
 	{
@@ -379,7 +382,6 @@ float CylinderParamIntersect( float yMinPercent, float yMaxPercent, float phiMax
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t = INFINITY;
 	float t0, t1, phi;
 
 	// implicit equation of a unit (radius of 1) cylinder, extending infinitely in the +Y and -Y directions:
@@ -388,8 +390,7 @@ float CylinderParamIntersect( float yMinPercent, float yMaxPercent, float phiMax
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z);
     	float c = (ro.x * ro.x + ro.z * ro.z) - 1.0;
 
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 		
 	if ( t0 > 0.0 )
 	{
@@ -427,7 +428,6 @@ float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadi
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t = INFINITY;
 	float t0, t1, phi;
 
 	// implicit equation of a double-cone extending infinitely in +Y and -Y directions
@@ -438,8 +438,7 @@ float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadi
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z - k * rd.y * (ro.y - 1.0));
     	float c = ro.x * ro.x + ro.z * ro.z - k * (ro.y - 1.0) * (ro.y - 1.0);
 	
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 		
 	if ( t0 > 0.0 )
 	{
@@ -477,7 +476,6 @@ float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiM
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t = INFINITY;
 	float t0, t1, phi;
 
 	// implicit equation of a paraboloid (bowl or vase-shape extending infinitely in the +Y direction):
@@ -490,8 +488,7 @@ float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiM
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z) - k * rd.y;
     	float c = (ro.x * ro.x + ro.z * ro.z) - k * ro.y;
 
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 	
 	// this takes into account that we shifted the ray origin by +1.0
 	yMaxPercent += 1.0;
@@ -533,7 +530,6 @@ float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, 
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t = INFINITY;
 	float t0, t1, phi;
 
 	// implicit equation of a hyperboloid of 1 sheet (hourglass shape extending infinitely in the +Y and -Y directions):
@@ -548,8 +544,7 @@ float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, 
 	float b = 2.0 * (k * rd.x * ro.x + k * rd.z * ro.z - j * rd.y * ro.y);
 	float c = (k * ro.x * ro.x + k * ro.z * ro.z - j * ro.y * ro.y) - 1.0;
 
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 	
 	if ( t0 > 0.0 )
 	{
@@ -587,7 +582,6 @@ float HyperbolicParaboloidParamIntersect( float yMinPercent, float yMaxPercent, 
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t = INFINITY;
 	float t0, t1, phi;
 
 	// implicit equation of an infinite hyperbolic paraboloid (saddle shape):
@@ -596,8 +590,7 @@ float HyperbolicParaboloidParamIntersect( float yMinPercent, float yMaxPercent, 
 	float b = 2.0 * (rd.x * ro.x - rd.z * ro.z) - rd.y;
 	float c = (ro.x * ro.x - ro.z * ro.z) - ro.y;
 
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 
 	if ( t0 > 0.0 )
 	{
@@ -634,7 +627,6 @@ THREE.ShaderChunk[ 'pathtracing_ellipsoid_intersect' ] = `
 float EllipsoidIntersect( vec3 radii, vec3 pos, Ray r )
 //-----------------------------------------------------------------------
 {
-	float t = INFINITY;
 	float t0, t1;
 	vec3 oc = r.origin - pos;
 	vec3 oc2 = oc*oc;
@@ -648,16 +640,9 @@ float EllipsoidIntersect( vec3 radii, vec3 pos, Ray r )
 	float b = 2.0*dot(ocrd, invRad2);
 	float c = dot(oc2, invRad2) - 1.0;
 
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 	
-	if ( t0 > 0.0 )
-		return t0;
-
-	if ( t1 > 0.0 )
-		return t1;
-	
-	return t;
+	return t0 > 0.0 ? t0 : t1 > 0.0 ? t1 : INFINITY;
 }
 
 `;
@@ -987,8 +972,7 @@ float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n 
 	float c = k * (ro.x * ro.x + ro.z * ro.z) - ro.y;
 
 	float t0, t1;
-	if (!solveQuadratic( a, b, c, t0, t1))
-		return INFINITY;
+	solveQuadratic(a, b, c, t0, t1);
 	
 	vec3 ip;
 	
@@ -1015,6 +999,100 @@ float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n 
 			return t1;		
 	}
 	
+	return INFINITY;	
+}
+
+`;
+
+THREE.ShaderChunk[ 'pathtracing_hyperboloid_intersect' ] = `
+
+//-------------------------------------------------------------------------------
+float HyperboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
+//-------------------------------------------------------------------------------
+{
+	vec3 rd = r.direction;
+	vec3 ro = r.origin - pos;
+	float k = height / (rad * rad);
+	
+	// quadratic equation coefficients
+	float a = k * ((rd.x * rd.x) - (rd.y * rd.y) + (rd.z * rd.z));
+	float b = k * 2.0 * ( (rd.x * ro.x) - (rd.y * ro.y) + (rd.z * ro.z) );
+	float c = k * ((ro.x * ro.x) - (ro.y * ro.y) + (ro.z * ro.z)) - (rad * rad);
+	
+	float t0, t1;
+	solveQuadratic(a, b, c, t0, t1);
+	
+	vec3 ip;
+	
+	if (t0 > 0.0)
+	{
+		ip = ro + rd * t0;
+		n = vec3( 2.0 * ip.x, -2.0 * ip.y, 2.0 * ip.z );
+		// flip normal if it is facing away from us
+		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
+		
+		if (abs(ip.y) < height)
+			return t0;		
+	}
+
+	if (t1 > 0.0)
+	{	
+		ip = ro + rd * t1;
+		n = vec3( 2.0 * ip.x, -2.0 * ip.y, 2.0 * ip.z );
+		// flip normal if it is facing away from us
+		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
+		
+		if (abs(ip.y) < height)
+			return t1;	
+	}
+	
+	return INFINITY;	
+}
+
+`;
+
+THREE.ShaderChunk[ 'pathtracing_hyperbolic_paraboloid_intersect' ] = `
+
+//-----------------------------------------------------------------------------------------
+float HyperbolicParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
+//-----------------------------------------------------------------------------------------
+{
+	vec3 rd = r.direction;
+	vec3 ro = r.origin - pos;
+	float k = height / (rad * rad);
+	
+	// quadratic equation coefficients
+	float a = k * (rd.x * rd.x - rd.z * rd.z);
+	float b = k * 2.0 * (rd.x * ro.x - rd.z * ro.z) - rd.y;
+	float c = k * (ro.x * ro.x - ro.z * ro.z) - ro.y;
+	
+	float t0, t1;
+	solveQuadratic(a, b, c, t0, t1);
+	
+	vec3 ip;
+
+	if (t0 > 0.0)
+	{
+		ip = ro + rd * t0;
+		n = vec3( 2.0 * ip.x, -1.0 / k, -2.0 * ip.z );
+		// flip normal if it is facing away from us
+		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
+		
+		if (abs(ip.x) < height && abs(ip.y) < height && abs(ip.z) < height)
+			return t0;		
+	}
+
+	if (t1 > 0.0)
+	{	
+		ip = ro + rd * t1;
+		n = vec3( 2.0 * ip.x, -1.0 / k, -2.0 * ip.z );
+		// flip normal if it is facing away from us
+		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
+		
+		if (abs(ip.x) < height && abs(ip.y) < height && abs(ip.z) < height)
+			return t1;		
+	}
+		
 	return INFINITY;	
 }
 
@@ -1183,9 +1261,9 @@ float QuadIntersect( vec3 v0, vec3 v1, vec3 v2, vec3 v3, Ray r, bool isDoubleSid
 THREE.ShaderChunk[ 'pathtracing_box_intersect' ] = `
 
 
-//--------------------------------------------------------------------------
-float BoxIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 normal )
-//--------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
+float BoxIntersect( vec3 minCorner, vec3 maxCorner, inout Ray r, out vec3 normal, out bool isRayExiting )
+//-------------------------------------------------------------------------------------------------------
 {
 	//r.direction = normalize(r.direction);
 	vec3 invDir = 1.0 / r.direction;
@@ -1203,12 +1281,14 @@ float BoxIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 normal )
 	if (t0 > 0.0) // if we are outside the box
 	{
 		normal = -sign(r.direction) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
+		isRayExiting = false;
 		return t0;	
 	}
 
 	if (t1 > 0.0) // if we are inside the box
 	{
 		normal = -sign(r.direction) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
+		isRayExiting = true;
 		return t1;
 	}
 
