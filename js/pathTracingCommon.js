@@ -9,8 +9,6 @@ var screenTextureShader = {
         ] ),
 
         vertexShader: [
-                '#version 300 es',
-                
                 'precision highp float;',
 		'precision highp int;',
 
@@ -22,18 +20,15 @@ var screenTextureShader = {
         ].join( '\n' ),
 
         fragmentShader: [
-                '#version 300 es',
-                
                 'precision highp float;',
 		'precision highp int;',
 		'precision highp sampler2D;',
 
                 'uniform sampler2D tPathTracedImageTexture;',
-                'out vec4 out_FragColor;',
 		
 		'void main()',
 		'{',	
-			'out_FragColor = texelFetch(tPathTracedImageTexture, ivec2(gl_FragCoord.xy), 0);',	
+			'pc_fragColor = texelFetch(tPathTracedImageTexture, ivec2(gl_FragCoord.xy), 0);',	
 		'}'
 		
         ].join( '\n' )
@@ -52,8 +47,6 @@ var screenOutputShader = {
         ] ),
 
         vertexShader: [
-                '#version 300 es',
-                
                 'precision highp float;',
 		'precision highp int;',
 
@@ -65,15 +58,12 @@ var screenOutputShader = {
         ].join( '\n' ),
 
         fragmentShader: [
-                '#version 300 es',
-                
                 'precision highp float;',
 		'precision highp int;',
 		'precision highp sampler2D;',
 
                 'uniform float uOneOverSampleCounter;',
 		'uniform sampler2D tPathTracedImageTexture;',
-                'out vec4 out_FragColor;',
 		
 		'void main()',
 		'{',
@@ -82,7 +72,7 @@ var screenOutputShader = {
 			'//pixelColor = Uncharted2ToneMapping(pixelColor);',
 			'//pixelColor = OptimizedCineonToneMapping(pixelColor);',
 			'//pixelColor = ACESFilmicToneMapping(pixelColor);',
-			'out_FragColor = clamp(vec4( pow(pixelColor, vec3(0.4545)), 1.0 ), 0.0, 1.0);',	
+			'pc_fragColor = clamp(vec4( pow(pixelColor, vec3(0.4545)), 1.0 ), 0.0, 1.0);',	
 		'}'
 		
         ].join( '\n' )
@@ -91,10 +81,8 @@ var screenOutputShader = {
 
 
 THREE.ShaderChunk[ 'pathtracing_uniforms_and_defines' ] = `
-
 uniform bool uCameraIsMoving;
 uniform bool uCameraJustStartedMoving;
-
 uniform float uEPS_intersect;
 uniform float uTime;
 uniform float uSampleCounter;
@@ -103,18 +91,11 @@ uniform float uULen;
 uniform float uVLen;
 uniform float uApertureSize;
 uniform float uFocusDistance;
-
 uniform vec2 uResolution;
-
 uniform vec3 uRandomVector;
-
 uniform mat4 uCameraMatrix;
-
 uniform sampler2D tPreviousTexture;
-
 in vec2 vUv;
-out vec4 out_FragColor;
-
 #define PI               3.14159265358979323
 #define TWO_PI           6.28318530717958648
 #define FOUR_PI          12.5663706143591729
@@ -125,7 +106,6 @@ out vec4 out_FragColor;
 #define ONE_OVER_THREE   0.33333333333333333
 #define E                2.71828182845904524
 #define INFINITY         1000000.0
-
 #define SPOT_LIGHT -2
 #define POINT_LIGHT -1
 #define LIGHT 0
@@ -147,52 +127,41 @@ out vec4 out_FragColor;
 #define DARKWOOD 16
 #define PAINTING 17
 #define METALCOAT 18
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_skymodel_defines' ] = `
-
 #define TURBIDITY 0.2//0.3
 #define RAYLEIGH_COEFFICIENT 2.5//2.0
-
 #define MIE_COEFFICIENT 0.05//0.05
 #define MIE_DIRECTIONAL_G 0.76//0.76
-
 // constants for atmospheric scattering
 #define THREE_OVER_SIXTEENPI 0.05968310365946075
 #define ONE_OVER_FOURPI 0.07957747154594767
-
 // wavelength of used primaries, according to preetham
 #define LAMBDA vec3( 680E-9, 550E-9, 450E-9 )
 #define TOTAL_RAYLEIGH vec3( 5.804542996261093E-6, 1.3562911419845635E-5, 3.0265902468824876E-5 )
-
 // mie stuff
 // K coefficient for the primaries
 #define K vec3(0.686, 0.678, 0.666)
 #define MIE_V 4.0
 #define MIE_CONST vec3( 1.8399918514433978E14, 2.7798023919660528E14, 4.0790479543861094E14 )
-
 // optical length at zenith for molecules
 #define RAYLEIGH_ZENITH_LENGTH 8400.0
 #define MIE_ZENITH_LENGTH 1250.0
 #define UP_VECTOR vec3(0.0, 1.0, 0.0)
-
 #define SUN_POWER 50.0
 #define SUN_ANGULAR_DIAMETER_COS 0.99983194915 // 66 arc seconds -> degrees, and the cosine of that
 #define CUTOFF_ANGLE 1.6 
-
 `;
 
 
 THREE.ShaderChunk[ 'pathtracing_plane_intersect' ] = `
-
 //-----------------------------------------------------------------------
 float PlaneIntersect( vec4 pla, Ray r )
 //-----------------------------------------------------------------------
 {
 	vec3 n = normalize(pla.xyz);
 	float denom = dot(n, r.direction);
-
 	// uncomment the following if single-sided plane is desired
 	//if (denom >= 0.0) return INFINITY;
 	
@@ -200,11 +169,9 @@ float PlaneIntersect( vec4 pla, Ray r )
         float result = dot(pOrO, n) / denom;
 	return (result > 0.0) ? result : INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_disk_intersect' ] = `
-
 //-----------------------------------------------------------------------
 float DiskIntersect( float radius, vec3 pos, vec3 normal, Ray r )
 //-----------------------------------------------------------------------
@@ -216,7 +183,6 @@ float DiskIntersect( float radius, vec3 pos, vec3 normal, Ray r )
 	
         float result = dot(pOrO, -normal) / denom;
 	if (result < 0.0) return INFINITY;
-
         vec3 intersectPos = r.origin + r.direction * result;
 	vec3 v = intersectPos - pos;
 	float d2 = dot(v,v);
@@ -226,40 +192,32 @@ float DiskIntersect( float radius, vec3 pos, vec3 normal, Ray r )
 		
 	return result;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_rectangle_intersect' ] = `
-
 //------------------------------------------------------------------------------------
 float RectangleIntersect( vec3 pos, vec3 normal, float radiusU, float radiusV, Ray r )
 //------------------------------------------------------------------------------------
 {
 	float dt = dot(-normal, r.direction);
-
 	// use the following for one-sided rectangle
 	if (dt < 0.0) return INFINITY;
-
 	float t = dot(-normal, pos - r.origin) / dt;
 	if (t < 0.0) return INFINITY;
 	
 	vec3 hit = r.origin + r.direction * t;
 	vec3 vi = hit - pos;
-
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
 	float signf = normal.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + normal.z);
 	float b = normal.x * normal.y * a;
 	vec3 T = vec3( 1.0 + signf * normal.x * normal.x * a, signf * b, -signf * normal.x );
 	vec3 B = vec3( b, signf + normal.y * normal.y * a, -normal.y );
-
 	return (abs(dot(T, vi)) > radiusU || abs(dot(B, vi)) > radiusV) ? INFINITY : t;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_slab_intersect' ] = `
-
 //--------------------------------------------------------------------------------------
 float SlabIntersect( float radius, vec3 normal, Ray r, out vec3 n )
 //--------------------------------------------------------------------------------------
@@ -271,11 +229,9 @@ float SlabIntersect( float radius, vec3 normal, Ray r, out vec3 n )
 	float t = dot(pOrO, n) / denom;
 	return t > 0.0 ? t : INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_sphere_intersect' ] = `
-
 /* bool solveQuadratic(float A, float B, float C, out float t0, out float t1)
 {
 	float discrim = B * B - 4.0 * A * C;
@@ -284,19 +240,16 @@ THREE.ShaderChunk[ 'pathtracing_sphere_intersect' ] = `
         	return false;
     
 	float rootDiscrim = sqrt(discrim);
-
 	float Q = (B > 0.0) ? -0.5 * (B + rootDiscrim) : -0.5 * (B - rootDiscrim); 
 	// float t_0 = Q / A; 
 	// float t_1 = C / Q;
 	// t0 = min( t_0, t_1 );
 	// t1 = max( t_0, t_1 );
-
 	t1 = Q / A; 
 	t0 = C / Q;
 	
 	return true;
 } */
-
 // optimized algorithm for solving quadratic equations developed by Dr. Po-Shen Loh -> https://youtu.be/XKBX0r3J-9Y
 // Adapted to root finding (ray t0/t1) for all quadric shapes (sphere, ellipsoid, cylinder, cone, etc.) by Erich Loftis
 void solveQuadratic(float A, float B, float C, out float t0, out float t1)
@@ -310,8 +263,6 @@ void solveQuadratic(float A, float B, float C, out float t0, out float t1)
 	t0 = neg_halfB - u;
 	t1 = neg_halfB + u;
 }
-
-
 //-----------------------------------------------------------------------
 float SphereIntersect( float rad, vec3 pos, Ray ray )
 //-----------------------------------------------------------------------
@@ -321,29 +272,23 @@ float SphereIntersect( float rad, vec3 pos, Ray ray )
 	float a = dot( ray.direction, ray.direction );
 	float b = 2.0 * dot( ray.direction, L );
 	float c = dot( L, L ) - (rad * rad);
-
 	solveQuadratic(a, b, c, t0, t1);
-
 	return t0 > 0.0 ? t0 : t1 > 0.0 ? t1 : INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_ellipsoid_param_intersect' ] = `
-
 //------------------------------------------------------------------------------------------------------------
 float EllipsoidParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
 	float t0, t1, phi;
-
 	// implicit equation of a unit (radius of 1) sphere:
 	// x^2 + y^2 + z^2 - 1 = 0
 	float a = dot(rd, rd);
 	float b = 2.0 * dot(rd, ro);
 	float c = dot(ro, ro) - 1.0;
-
 	solveQuadratic(a, b, c, t0, t1);
 	
 	if ( t0 > 0.0 )
@@ -357,7 +302,6 @@ float EllipsoidParamIntersect( float yMinPercent, float yMaxPercent, float phiMa
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t0;
 	}
-
 	if ( t1 > 0.0 )
 	{
 		pHit = ro + rd * t1;
@@ -369,27 +313,22 @@ float EllipsoidParamIntersect( float yMinPercent, float yMaxPercent, float phiMa
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t1;
 	}
-
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_cylinder_param_intersect' ] = `
-
 //------------------------------------------------------------------------------------------------------------
 float CylinderParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
 	float t0, t1, phi;
-
 	// implicit equation of a unit (radius of 1) cylinder, extending infinitely in the +Y and -Y directions:
 	// x^2 + z^2 - 1 = 0
 	float a = (rd.x * rd.x + rd.z * rd.z);
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z);
     	float c = (ro.x * ro.x + ro.z * ro.z) - 1.0;
-
 	solveQuadratic(a, b, c, t0, t1);
 		
 	if ( t0 > 0.0 )
@@ -403,7 +342,6 @@ float CylinderParamIntersect( float yMinPercent, float yMaxPercent, float phiMax
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t0;
 	}
-
 	if ( t1 > 0.0 )
 	{
 		pHit = ro + rd * t1;
@@ -415,21 +353,17 @@ float CylinderParamIntersect( float yMinPercent, float yMaxPercent, float phiMax
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t1;
 	}
-
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_cone_param_intersect' ] = `
-
 //------------------------------------------------------------------------------------------------------------
 float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
 	float t0, t1, phi;
-
 	// implicit equation of a double-cone extending infinitely in +Y and -Y directions
 	// x^2 + z^2 - y^2 = 0
 	// code below cuts off top cone, leaving bottom cone with apex at the top (+1.0), and circular base (radius of 1) at the bottom (-1.0)
@@ -451,7 +385,6 @@ float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadi
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t0;
 	}
-
 	if ( t1 > 0.0 )
 	{
 		pHit = ro + rd * t1;
@@ -463,37 +396,30 @@ float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadi
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t1;
 	}
-
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_paraboloid_param_intersect' ] = `
-
 //------------------------------------------------------------------------------------------------------------
 float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
 	float t0, t1, phi;
-
 	// implicit equation of a paraboloid (bowl or vase-shape extending infinitely in the +Y direction):
 	// x^2 + z^2 - y = 0
 	ro.y += 1.0; // this essentially centers the paraboloid so that the bottom is at -1.0 and 
 		     // the open circular top (radius of 1) is at +1.0
-
 	float k = 0.5;
 	float a = (rd.x * rd.x + rd.z * rd.z);
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z) - k * rd.y;
     	float c = (ro.x * ro.x + ro.z * ro.z) - k * ro.y;
-
 	solveQuadratic(a, b, c, t0, t1);
 	
 	// this takes into account that we shifted the ray origin by +1.0
 	yMaxPercent += 1.0;
 	yMinPercent += 1.0;
-
 	if ( t0 > 0.0 )
 	{
 		pHit = ro + rd * t0;
@@ -505,7 +431,6 @@ float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiM
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t0;
 	}
-
 	if ( t1 > 0.0 )
 	{
 		pHit = ro + rd * t1;
@@ -517,21 +442,17 @@ float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiM
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t1;
 	}
-
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_hyperboloid_param_intersect' ] = `
-
 //------------------------------------------------------------------------------------------------------------
 float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
 	float t0, t1, phi;
-
 	// implicit equation of a hyperboloid of 1 sheet (hourglass shape extending infinitely in the +Y and -Y directions):
 	// x^2 + z^2 - y^2 - 1 = 0
 	// implicit equation of a hyperboloid of 2 sheets (2 mirrored opposing paraboloids, non-connecting, top extends infinitely in +Y, bottom in -Y):
@@ -543,7 +464,6 @@ float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, 
 	float a = k * rd.x * rd.x + k * rd.z * rd.z - j * rd.y * rd.y;
 	float b = 2.0 * (k * rd.x * ro.x + k * rd.z * ro.z - j * rd.y * ro.y);
 	float c = (k * ro.x * ro.x + k * ro.z * ro.z - j * ro.y * ro.y) - 1.0;
-
 	solveQuadratic(a, b, c, t0, t1);
 	
 	if ( t0 > 0.0 )
@@ -557,7 +477,6 @@ float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, 
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t0;
 	}
-
 	if ( t1 > 0.0 )
 	{
 		pHit = ro + rd * t1;
@@ -565,33 +484,26 @@ float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, 
 		n = vec3(2.0 * pHit.x * k, -2.0 * pHit.y * j, 2.0 * pHit.z * k);
 		// flip normal if it is facing away from us
 		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-
 		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
 			return t1;
 	}
-
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_hyperbolic_paraboloid_param_intersect' ] = `
-
 //------------------------------------------------------------------------------------------------------------
 float HyperbolicParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
 	float t0, t1, phi;
-
 	// implicit equation of an infinite hyperbolic paraboloid (saddle shape):
 	// x^2 - z^2 - y = 0
 	float a = rd.x * rd.x - rd.z * rd.z;
 	float b = 2.0 * (rd.x * ro.x - rd.z * ro.z) - rd.y;
 	float c = (ro.x * ro.x - ro.z * ro.z) - ro.y;
-
 	solveQuadratic(a, b, c, t0, t1);
-
 	if ( t0 > 0.0 )
 	{
 		pHit = ro + rd * t0;
@@ -599,11 +511,9 @@ float HyperbolicParaboloidParamIntersect( float yMinPercent, float yMaxPercent, 
 		n = vec3(2.0 * pHit.x, -1.0, -2.0 * pHit.z);
 		// flip normal if it is facing away from us
 		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-
 		if (abs(pHit.x) < yMaxPercent && abs(pHit.y) < yMaxPercent && abs(pHit.z) < yMaxPercent && phi < phiMaxRadians)
 			return t0;
 	}
-
 	if ( t1 > 0.0 )
 	{
 		pHit = ro + rd * t1;
@@ -615,14 +525,11 @@ float HyperbolicParaboloidParamIntersect( float yMinPercent, float yMaxPercent, 
 		if (abs(pHit.x) < yMaxPercent && abs(pHit.y) < yMaxPercent && abs(pHit.z) < yMaxPercent && phi < phiMaxRadians)
 			return t1;
 	}
-
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_ellipsoid_intersect' ] = `
-
 //-----------------------------------------------------------------------
 float EllipsoidIntersect( vec3 radii, vec3 pos, Ray r )
 //-----------------------------------------------------------------------
@@ -639,16 +546,13 @@ float EllipsoidIntersect( vec3 radii, vec3 pos, Ray r )
 	float a = dot(rd2, invRad2);
 	float b = 2.0*dot(ocrd, invRad2);
 	float c = dot(oc2, invRad2) - 1.0;
-
 	solveQuadratic(a, b, c, t0, t1);
 	
 	return t0 > 0.0 ? t0 : t1 > 0.0 ? t1 : INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_opencylinder_intersect' ] = `
-
 //---------------------------------------------------------------------------
 float OpenCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 //---------------------------------------------------------------------------
@@ -680,7 +584,6 @@ float OpenCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 	vec3 ip;
 	vec3 lp;
 	float ct;
-
 	if (t0 > 0.0)
 	{
 		ip=r.origin+r.direction*t0;
@@ -707,11 +610,9 @@ float OpenCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 	
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_cappedcylinder_intersect' ] = `
-
 //-----------------------------------------------------------------------------
 float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 //-----------------------------------------------------------------------------
@@ -806,11 +707,9 @@ float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 	
 	return result;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_cone_intersect' ] = `
-
 //----------------------------------------------------------------------------
 float ConeIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n )
 //----------------------------------------------------------------------------   
@@ -887,7 +786,6 @@ float ConeIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n )
 		n=tm*n;
 		return t0;
 	}
-
         if(t1>0.0 && pt1.z>r1/r0 && pt1.z<1.0)
 	{
 		n=pt1;
@@ -901,12 +799,10 @@ float ConeIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n )
 	
 	return INFINITY;	
 }
-
 `;
 
 
 THREE.ShaderChunk[ 'pathtracing_capsule_intersect' ] = `
-
 //-------------------------------------------------------------------------------
 float CapsuleIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n )
 //-------------------------------------------------------------------------------
@@ -953,11 +849,9 @@ float CapsuleIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n 
 	    
 	return t0;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_paraboloid_intersect' ] = `
-
 //------------------------------------------------------------------------------
 float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
 //------------------------------------------------------------------------------
@@ -970,7 +864,6 @@ float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n 
 	float a = k * (rd.x * rd.x + rd.z * rd.z);
 	float b = k * 2.0 * (rd.x * ro.x + rd.z * ro.z) - rd.y;
 	float c = k * (ro.x * ro.x + ro.z * ro.z) - ro.y;
-
 	float t0, t1;
 	solveQuadratic(a, b, c, t0, t1);
 	
@@ -987,7 +880,6 @@ float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n 
 			return t0;
 				
 	}
-
 	if (t1 > 0.0)
 	{	
 		ip = ro + rd * t1;
@@ -1001,11 +893,9 @@ float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n 
 	
 	return INFINITY;	
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_hyperboloid_intersect' ] = `
-
 //-------------------------------------------------------------------------------
 float HyperboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
 //-------------------------------------------------------------------------------
@@ -1034,7 +924,6 @@ float HyperboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n
 		if (abs(ip.y) < height)
 			return t0;		
 	}
-
 	if (t1 > 0.0)
 	{	
 		ip = ro + rd * t1;
@@ -1048,11 +937,9 @@ float HyperboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n
 	
 	return INFINITY;	
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_hyperbolic_paraboloid_intersect' ] = `
-
 //-----------------------------------------------------------------------------------------
 float HyperbolicParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
 //-----------------------------------------------------------------------------------------
@@ -1070,7 +957,6 @@ float HyperbolicParaboloidIntersect( float rad, float height, vec3 pos, Ray r, o
 	solveQuadratic(a, b, c, t0, t1);
 	
 	vec3 ip;
-
 	if (t0 > 0.0)
 	{
 		ip = ro + rd * t0;
@@ -1081,7 +967,6 @@ float HyperbolicParaboloidIntersect( float rad, float height, vec3 pos, Ray r, o
 		if (abs(ip.x) < height && abs(ip.y) < height && abs(ip.z) < height)
 			return t0;		
 	}
-
 	if (t1 > 0.0)
 	{	
 		ip = ro + rd * t1;
@@ -1095,27 +980,22 @@ float HyperbolicParaboloidIntersect( float rad, float height, vec3 pos, Ray r, o
 		
 	return INFINITY;	
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_torus_intersect' ] = `
-
 float map_Torus( in vec3 pos )
 {
 	return length( vec2(length(pos.xz)-torii[0].radius0,pos.y) )-torii[0].radius1;
 }
-
 vec3 calcNormal_Torus( in vec3 pos )
 {
 	// epsilon = a small number
 	vec2 e = vec2(1.0,-1.0)*0.5773*0.0002;
-
 	return normalize( e.xyy*map_Torus( pos + e.xyy ) + 
 			  e.yyx*map_Torus( pos + e.yyx ) + 
 			  e.yxy*map_Torus( pos + e.yxy ) + 
 			  e.xxx*map_Torus( pos + e.xxx ) );
 }
-
 /* 
 Thanks to koiava for the ray marching strategy! https://www.shadertoy.com/user/koiava 
 */
@@ -1139,7 +1019,6 @@ float TorusIntersect( float rad0, float rad1, Ray r )
 	
 	return (d<0.001) ? t : INFINITY;
 }
-
 /*
 // borrowed from iq: https://www.shadertoy.com/view/4sBGDy
 //-----------------------------------------------------------------------
@@ -1224,43 +1103,33 @@ float TorusIntersect( float rad0, float rad1, vec3 pos, Ray ray )
 	return result;
 }
 */
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_quad_intersect' ] = `
-
 float TriangleIntersect( vec3 v0, vec3 v1, vec3 v2, Ray r, bool isDoubleSided )
 {
 	vec3 edge1 = v1 - v0;
 	vec3 edge2 = v2 - v0;
 	vec3 pvec = cross(r.direction, edge2);
 	float det = 1.0 / dot(edge1, pvec);
-
 	if ( !isDoubleSided && det < 0.0 ) 
 		return INFINITY;
-
 	vec3 tvec = r.origin - v0;
 	float u = dot(tvec, pvec) * det;
 	vec3 qvec = cross(tvec, edge1);
 	float v = dot(r.direction, qvec) * det;
-
 	float t = dot(edge2, qvec) * det;
-
 	return (u < 0.0 || u > 1.0 || v < 0.0 || u + v > 1.0 || t <= 0.0) ? INFINITY : t;
 }
-
 //----------------------------------------------------------------------------------
 float QuadIntersect( vec3 v0, vec3 v1, vec3 v2, vec3 v3, Ray r, bool isDoubleSided )
 //----------------------------------------------------------------------------------
 {
 	return min(TriangleIntersect(v0, v1, v2, r, isDoubleSided), TriangleIntersect(v0, v2, v3, r, isDoubleSided));
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_box_intersect' ] = `
-
-
 //-------------------------------------------------------------------------------------------------------
 float BoxIntersect( vec3 minCorner, vec3 maxCorner, inout Ray r, out vec3 normal, out bool isRayExiting )
 //-------------------------------------------------------------------------------------------------------
@@ -1277,28 +1146,23 @@ float BoxIntersect( vec3 minCorner, vec3 maxCorner, inout Ray r, out vec3 normal
 	float t1 = min( min(tmax.x, tmax.y), tmax.z);
 	
 	if (t0 > t1) return INFINITY;
-
 	if (t0 > 0.0) // if we are outside the box
 	{
 		normal = -sign(r.direction) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
 		isRayExiting = false;
 		return t0;	
 	}
-
 	if (t1 > 0.0) // if we are inside the box
 	{
 		normal = -sign(r.direction) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
 		isRayExiting = true;
 		return t1;
 	}
-
 	return INFINITY;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_boundingbox_intersect' ] = `
-
 //--------------------------------------------------------------------------------------
 float BoundingBoxIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3 invDir )
 //--------------------------------------------------------------------------------------
@@ -1315,13 +1179,11 @@ float BoundingBoxIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3
 	return (t0 > t1 || t1 < 0.0) ? INFINITY : t0;
 	//return t0 > t1 ? INFINITY : t1 > 0.0 ? t0 : INFINITY;
 }
-
 `;
 
 
 
 THREE.ShaderChunk[ 'pathtracing_bvhTriangle_intersect' ] = `
-
 //-------------------------------------------------------------------------------------------
 float BVH_TriangleIntersect( vec3 v0, vec3 v1, vec3 v2, Ray r, out float u, out float v )
 //-------------------------------------------------------------------------------------------
@@ -1335,14 +1197,11 @@ float BVH_TriangleIntersect( vec3 v0, vec3 v1, vec3 v2, Ray r, out float u, out 
 	vec3 qvec = cross(tvec, edge1);
 	v = dot(r.direction, qvec) * det;
 	float t = dot(edge2, qvec) * det;
-
 	return (det < 0.0 || u < 0.0 || u > 1.0 || v < 0.0 || u + v > 1.0 || t <= 0.0) ? INFINITY : t;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_bvhDoubleSidedTriangle_intersect' ] = `
-
 //-------------------------------------------------------------------------------------------
 float BVH_DoubleSidedTriangleIntersect( vec3 v0, vec3 v1, vec3 v2, Ray r, out float u, out float v )
 //-------------------------------------------------------------------------------------------
@@ -1356,44 +1215,36 @@ float BVH_DoubleSidedTriangleIntersect( vec3 v0, vec3 v1, vec3 v2, Ray r, out fl
 	vec3 qvec = cross(tvec, edge1);
 	v = dot(r.direction, qvec) * det;
 	float t = dot(edge2, qvec) * det;
-
 	return (u < 0.0 || u > 1.0 || v < 0.0 || u + v > 1.0 || t <= 0.0) ? INFINITY : t;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_physical_sky_functions' ] = `
-
 float RayleighPhase(float cosTheta)
 {
 	return THREE_OVER_SIXTEENPI * (1.0 + (cosTheta * cosTheta));
 }
-
 float hgPhase(float cosTheta, float g)
 {
         float g2 = g * g;
         float inverse = 1.0 / pow(max(0.0, 1.0 - 2.0 * g * cosTheta + g2), 1.5);
 	return ONE_OVER_FOURPI * ((1.0 - g2) * inverse);
 }
-
 vec3 totalMie()
 {
 	float c = (0.2 * TURBIDITY) * 10E-18;
 	return 0.434 * c * MIE_CONST;
 }
-
 float SunIntensity(float zenithAngleCos)
 {
 	return SUN_POWER * max( 0.0, 1.0 - exp( -( CUTOFF_ANGLE - acos(zenithAngleCos) ) ) );
 }
-
 vec3 Get_Sky_Color(Ray r, vec3 sunDirection)
 {
 	
     	vec3 viewDir = normalize(r.direction);
 	
 	/* most of the following code is borrowed from the three.js shader file: SkyShader.js */
-
     	// Cosine angles
 	float cosViewSunAngle = dot(viewDir, sunDirection);
     	float cosSunUpAngle = dot(sunDirection, UP_VECTOR); // allowed to be negative: + is daytime, - is nighttime
@@ -1414,10 +1265,8 @@ vec3 Get_Sky_Color(Ray r, vec3 sunDirection)
     
 	float rayleighOpticalLength = RAYLEIGH_ZENITH_LENGTH * zenithAngle;
 	float mieOpticalLength = MIE_ZENITH_LENGTH * zenithAngle;
-
 	// combined extinction factor	
 	vec3 Fex = exp(-(rayleighAtX * rayleighOpticalLength + mieAtX * mieOpticalLength));
-
 	// in scattering
 	vec3 rayleighXtoEye = rayleighAtX * RayleighPhase(cosViewSunAngle);
 	vec3 mieXtoEye = mieAtX * hgPhase(cosViewSunAngle, MIE_DIRECTIONAL_G);
@@ -1431,28 +1280,23 @@ vec3 Get_Sky_Color(Ray r, vec3 sunDirection)
 	float oneMinusCosSun = 1.0 - cosSunUpAngle;
     	sky *= mix( vec3(1.0), pow(somethingElse * Fex,vec3(0.5)), 
 	    clamp(oneMinusCosSun * oneMinusCosSun * oneMinusCosSun * oneMinusCosSun * oneMinusCosSun, 0.0, 1.0) );
-
 	// composition + solar disk
     	float sundisk = smoothstep(SUN_ANGULAR_DIAMETER_COS - 0.0001, SUN_ANGULAR_DIAMETER_COS, cosViewSunAngle);
 	vec3 sun = (sunE * SUN_POWER * Fex) * sundisk;
 	
 	return sky + sun;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_random_functions' ] = `
-
 // from iq https://www.shadertoy.com/view/4tXyWN
 float rand( inout uvec2 seed )
 {
 	seed += uvec2(1);
-
     	uvec2 q = 1103515245U * ( (seed >> 1U) ^ (seed.yx) );
     	uint  n = 1103515245U * ( (q.x) ^ (q.y >> 3U) );
 	return float(n) * (1.0 / float(0xffffffffU));
 }
-
 vec3 randomSphereDirection( inout uvec2 seed )
 {
     	float up = rand(seed) * 2.0 - 1.0; // range: -1 to +1
@@ -1460,23 +1304,19 @@ vec3 randomSphereDirection( inout uvec2 seed )
 	float around = rand(seed) * TWO_PI;
 	return normalize(vec3(cos(around) * over, up, sin(around) * over));	
 }
-
 vec3 randomDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 {
 	float up = rand(seed); // uniform distribution in hemisphere
     	float over = sqrt(max(0.0, 1.0 - up * up));
 	float around = rand(seed) * TWO_PI;
-
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
 	float signf = nl.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + nl.z);
 	float b = nl.x * nl.y * a;
 	vec3 T = vec3( 1.0 + signf * nl.x * nl.x * a, signf * b, -signf * nl.x );
 	vec3 B = vec3( b, signf + nl.y * nl.y * a, -nl.y );
-
 	return normalize(cos(around) * over * T + sin(around) * over * B + up * nl);
 }
-
 // vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 // {
 // 	float up = sqrt(rand(seed)); // cos-weighted distribution in hemisphere
@@ -1485,12 +1325,9 @@ vec3 randomDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 	
 // 	vec3 u = normalize( cross( abs(nl.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0), nl ) );
 // 	vec3 v = cross(nl, u);
-
 // 	return normalize(cos(around) * over * u + sin(around) * over * v + up * nl);
 // }
-
 #define N_POINTS 32.0
-
 vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 {
 	float i = floor(N_POINTS * rand(seed)) + (rand(seed) * 0.5);
@@ -1501,7 +1338,6 @@ vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 	float x = r * cos(theta);
 	float y = r * sin(theta);
 	vec3 p = vec3(x, y, sqrt(1.0 - x * x - y * y)); // project XY disk points outward along Z axis
-
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
 	float signf = nl.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + nl.z);
@@ -1511,14 +1347,12 @@ vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 	
 	return (T * p.x + B * p.y + nl * p.z);
 }
-
 vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout uvec2 seed )
 {
 	roughness = mix( 13.0, 0.0, sqrt(clamp(roughness, 0.0, 1.0)) );
 	float cosTheta = pow(rand(seed), 1.0 / (exp(roughness) + 1.0));
 	float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
 	float phi = rand(seed) * TWO_PI;
-
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
 	float signf = reflectionDir.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + reflectionDir.z);
@@ -1528,7 +1362,6 @@ vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout u
 	
 	return (T * cos(phi) * sinTheta + B * sin(phi) * sinTheta + reflectionDir * cosTheta);
 }
-
 // //the following alternative skips the creation of tangent and bi-tangent vectors u and v 
 // vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 // {
@@ -1536,7 +1369,6 @@ vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout u
 // 	float theta = 2.0 * rand(seed) - 1.0;
 // 	return nl + vec3(sqrt(1.0 - theta * theta) * vec2(cos(phi), sin(phi)), theta);
 // }
-
 // vec3 randomDirectionInPhongSpecular( vec3 reflectionDir, float roughness, inout uvec2 seed )
 // {
 // 	float phi = rand(seed) * TWO_PI;
@@ -1544,21 +1376,16 @@ vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout u
 // 	roughness = mix(13.0, 0.0, sqrt(roughness));
 // 	float exponent = exp(roughness) + 1.0;
 // 	//weight = (exponent + 2.0) / (exponent + 1.0);
-
 // 	float cosTheta = pow(rand(seed), 1.0 / (exponent + 1.0));
 // 	float radius = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
-
 // 	vec3 u = normalize( cross( abs(reflectionDir.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0), reflectionDir ) );
 // 	vec3 v = cross(reflectionDir, u);
-
 // 	return (u * cos(phi) * radius + v * sin(phi) * radius + reflectionDir * cosTheta);
 // }
-
 `;
 
 
 THREE.ShaderChunk[ 'pathtracing_sample_sphere_light' ] = `
-
 vec3 sampleSphereLight(vec3 x, vec3 nl, Sphere light, vec3 dirToLight, out float weight, inout uvec2 seed)
 {
 	dirToLight = (light.position - x); // no normalize (for distance calc below)
@@ -1568,7 +1395,6 @@ vec3 sampleSphereLight(vec3 x, vec3 nl, Sphere light, vec3 dirToLight, out float
 	// * 0.75 below ensures shadow rays don't miss the light, due to shader float precision
 	float sin_alpha = sqrt(max(0.0, 1.0 - cos_alpha * cos_alpha)) * 0.75; 
 	float phi = rand(seed) * TWO_PI;
-
 	dirToLight = normalize(dirToLight);
 	
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
@@ -1583,11 +1409,9 @@ vec3 sampleSphereLight(vec3 x, vec3 nl, Sphere light, vec3 dirToLight, out float
 	
 	return sampleDir;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_sample_quad_light' ] = `
-
 vec3 sampleQuadLight(vec3 x, vec3 nl, Quad light, vec3 dirToLight, out float weight, inout uvec2 seed)
 {
 	vec3 randPointOnLight;
@@ -1598,19 +1422,15 @@ vec3 sampleQuadLight(vec3 x, vec3 nl, Quad light, vec3 dirToLight, out float wei
 	float r2 = distance(light.v0, light.v1) * distance(light.v0, light.v3);
 	float d2 = dot(dirToLight, dirToLight);
 	float cos_a_max = sqrt(1.0 - clamp( r2 / d2, 0.0, 1.0));
-
 	dirToLight = normalize(dirToLight);
 	float dotNlRayDir = max(0.0, dot(nl, dirToLight)); 
 	weight =  2.0 * (1.0 - cos_a_max) * max(0.0, -dot(dirToLight, light.normal)) * dotNlRayDir; 
 	weight = clamp(weight, 0.0, 1.0);
-
 	return dirToLight;
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_calc_fresnel_reflectance' ] = `
-
 float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float ratioIoR)
 {
 	float temp = etai;
@@ -1625,25 +1445,20 @@ float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, 
 	float sint = ratioIoR * sqrt(1.0 - (cosi * cosi));
 	if (sint >= 1.0) 
 		return 1.0; // total internal reflection
-
 	float cost = sqrt(1.0 - (sint * sint));
 	cosi = abs(cosi);
 	float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
 	float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
-
 	return clamp( ((Rs * Rs) + (Rp * Rp)) * 0.5, 0.0, 1.0 );
 }
-
 `;
 
 THREE.ShaderChunk[ 'pathtracing_main' ] = `
-
 // tentFilter from Peter Shirley's 'Realistic Ray Tracing (2nd Edition)' book, pg. 60		
 float tentFilter(float x)
 {
 	return (x < 0.5) ? sqrt(2.0 * x) - 1.0 : 1.0 - sqrt(2.0 - (2.0 * x));
 }
-
 /*
 // cubicSplineFilter from Peter Shirley's 'Realistic Ray Tracing (2nd Edition)' book, pg. 58
 float solve(float r)
@@ -1656,7 +1471,6 @@ float solve(float r)
 	}
 	return u;
 }
-
 float cubicFilter(float x)
 {
 	if (x < 1.0 / 24.0)
@@ -1668,7 +1482,6 @@ float cubicFilter(float x)
 	else return 2.0 - pow(24.0 * (1.0 - x), 0.25);
 }
 */
-
 void main( void )
 {
 	// not needed, three.js has a built-in uniform named cameraPosition
@@ -1680,13 +1493,11 @@ void main( void )
 	
 	// seed for rand(seed) function
 	uvec2 seed = uvec2(uFrameCounter, uFrameCounter + 1.0) * uvec2(gl_FragCoord);
-
 	vec2 pixelPos = vec2(0);
 	vec2 pixelOffset = vec2(0);
 	
 	float x = rand(seed);
 	float y = rand(seed);
-
 	if (!uCameraIsMoving)
 	{
 		pixelOffset.x = tentFilter(x);
@@ -1697,11 +1508,9 @@ void main( void )
 	
 	// pixelOffset ranges from -1.0 to +1.0, so only need to divide by half resolution
 	pixelOffset /= (uResolution * 0.5);
-
 	// we must map pixelPos into the range -1.0 to +1.0
 	pixelPos = (gl_FragCoord.xy / uResolution) * 2.0 - 1.0;
 	pixelPos += pixelOffset;
-
 	vec3 rayDir = normalize( pixelPos.x * camRight * uULen + pixelPos.y * camUp * uVLen + camForward );
 	
 	// depth of field
@@ -1713,14 +1522,12 @@ void main( void )
 	vec3 finalRayDir = normalize(focalPoint - randomAperturePos);
 	
 	Ray ray = Ray( cameraPosition + randomAperturePos , finalRayDir );
-
 	SetupScene();
 				
 	// perform path tracing and get resulting pixel color
 	vec3 pixelColor = CalculateRadiance( ray, seed );
 	
 	vec3 previousColor = texelFetch(tPreviousTexture, ivec2(gl_FragCoord.xy), 0).rgb;
-
 	if (uFrameCounter == 1.0) // camera just moved after being still
 	{
 		previousColor = vec3(0); // clear rendering accumulation buffer
@@ -1731,7 +1538,6 @@ void main( void )
 		pixelColor *= 0.5; // brightness of new image (noisy)
 	}
 		
-	out_FragColor = vec4( pixelColor + previousColor, 1.0 );
+	pc_fragColor = vec4( pixelColor + previousColor, 1.0 );
 }
-
 `;
