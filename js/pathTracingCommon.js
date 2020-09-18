@@ -82,7 +82,7 @@ var screenOutputShader = {
 
 THREE.ShaderChunk[ 'pathtracing_uniforms_and_defines' ] = `
 uniform bool uCameraIsMoving;
-uniform bool uCameraJustStartedMoving;
+//uniform bool uCameraJustStartedMoving;
 uniform float uEPS_intersect;
 uniform float uTime;
 uniform float uSampleCounter;
@@ -91,6 +91,8 @@ uniform float uULen;
 uniform float uVLen;
 uniform float uApertureSize;
 uniform float uFocusDistance;
+uniform float uSamplesPerFrame;
+uniform float uFrameBlendingAmount;
 uniform vec2 uResolution;
 uniform vec3 uRandomVector;
 uniform mat4 uCameraMatrix;
@@ -1177,7 +1179,6 @@ float BoundingBoxIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3
 	float t1 = min( min(tmax.x, tmax.y), tmax.z);
 	
 	return (t0 > t1 || t1 < 0.0) ? INFINITY : t0;
-	//return t0 > t1 ? INFINITY : t1 > 0.0 ? t0 : INFINITY;
 }
 `;
 
@@ -1297,6 +1298,7 @@ float rand( inout uvec2 seed )
     	uint  n = 1103515245U * ( (q.x) ^ (q.y >> 3U) );
 	return float(n) * (1.0 / float(0xffffffffU));
 }
+
 vec3 randomSphereDirection( inout uvec2 seed )
 {
     	float up = rand(seed) * 2.0 - 1.0; // range: -1 to +1
@@ -1304,55 +1306,77 @@ vec3 randomSphereDirection( inout uvec2 seed )
 	float around = rand(seed) * TWO_PI;
 	return normalize(vec3(cos(around) * over, up, sin(around) * over));	
 }
+
 vec3 randomDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 {
-	float up = rand(seed); // uniform distribution in hemisphere
-    	float over = sqrt(max(0.0, 1.0 - up * up));
-	float around = rand(seed) * TWO_PI;
+	float r = rand(seed); // uniform distribution in hemisphere
+	float phi = rand(seed) * TWO_PI;
+	float x = r * cos(phi);
+	float y = r * sin(phi);
+	float z = sqrt(1.0 - x*x - y*y);
+	
+	// vec3 u = normalize( cross( abs(nl.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0), nl ) );
+	// vec3 v = cross(nl, u);
+	// return normalize(x * u + y * v + z * nl);
+
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
 	float signf = nl.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + nl.z);
 	float b = nl.x * nl.y * a;
 	vec3 T = vec3( 1.0 + signf * nl.x * nl.x * a, signf * b, -signf * nl.x );
 	vec3 B = vec3( b, signf + nl.y * nl.y * a, -nl.y );
-	return normalize(cos(around) * over * T + sin(around) * over * B + up * nl);
+	return normalize(x * T + y * B + z * nl);
 }
-// vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
-// {
-// 	float up = sqrt(rand(seed)); // cos-weighted distribution in hemisphere
-// 	float over = sqrt(max(0.0, 1.0 - up * up));
-// 	float around = rand(seed) * TWO_PI;
-	
-// 	vec3 u = normalize( cross( abs(nl.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0), nl ) );
-// 	vec3 v = cross(nl, u);
-// 	return normalize(cos(around) * over * u + sin(around) * over * v + up * nl);
-// }
-#define N_POINTS 32.0
+
 vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 {
-	float i = floor(N_POINTS * rand(seed)) + (rand(seed) * 0.5);
-			// the Golden angle in radians
-	float theta = i * 2.39996322972865332 + mod(uSampleCounter, TWO_PI);
-	theta = mod(theta, TWO_PI);
-	float r = sqrt(i / N_POINTS); // sqrt pushes points outward to prevent clumping in center of disk
-	float x = r * cos(theta);
-	float y = r * sin(theta);
-	vec3 p = vec3(x, y, sqrt(1.0 - x * x - y * y)); // project XY disk points outward along Z axis
+	float r = sqrt(rand(seed)); // cos-weighted distribution in hemisphere
+	float phi = rand(seed) * TWO_PI;
+	float x = r * cos(phi);
+	float y = r * sin(phi);
+	float z = sqrt(1.0 - x*x - y*y);
+	
+	// vec3 u = normalize( cross( abs(nl.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0), nl ) );
+	// vec3 v = cross(nl, u);
+	// return normalize(x * u + y * v + z * nl);
+
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
 	float signf = nl.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + nl.z);
 	float b = nl.x * nl.y * a;
 	vec3 T = vec3( 1.0 + signf * nl.x * nl.x * a, signf * b, -signf * nl.x );
 	vec3 B = vec3( b, signf + nl.y * nl.y * a, -nl.y );
-	
-	return (T * p.x + B * p.y + nl * p.z);
+	return normalize(x * T + y * B + z * nl);
 }
+
+// #define N_POINTS 32.0
+// vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
+// {
+// 	float i = floor(N_POINTS * rand(seed)) + (rand(seed) * 0.5);
+// 			// the Golden angle in radians
+// 	float theta = i * 2.39996322972865332 + mod(uSampleCounter, TWO_PI);
+// 	theta = mod(theta, TWO_PI);
+// 	float r = sqrt(i / N_POINTS); // sqrt pushes points outward to prevent clumping in center of disk
+// 	float x = r * cos(theta);
+// 	float y = r * sin(theta);
+// 	float z = sqrt(1.0 - x*x - y*y); // used for projecting XY disk points outward along Z axis
+// 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
+// 	float signf = nl.z >= 0.0 ? 1.0 : -1.0;
+// 	float a = -1.0 / (signf + nl.z);
+// 	float b = nl.x * nl.y * a;
+// 	vec3 T = vec3( 1.0 + signf * nl.x * nl.x * a, signf * b, -signf * nl.x );
+// 	vec3 B = vec3( b, signf + nl.y * nl.y * a, -nl.y );
+	
+// 	return normalize(x * T + y * B + z * nl);
+// }
+
 vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout uvec2 seed )
 {
 	roughness = mix( 13.0, 0.0, sqrt(clamp(roughness, 0.0, 1.0)) );
 	float cosTheta = pow(rand(seed), 1.0 / (exp(roughness) + 1.0));
 	float sinTheta = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
 	float phi = rand(seed) * TWO_PI;
+
 	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
 	float signf = reflectionDir.z >= 0.0 ? 1.0 : -1.0;
 	float a = -1.0 / (signf + reflectionDir.z);
@@ -1360,8 +1384,9 @@ vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout u
 	vec3 T = vec3( 1.0 + signf * reflectionDir.x * reflectionDir.x * a, signf * b, -signf * reflectionDir.x );
 	vec3 B = vec3( b, signf + reflectionDir.y * reflectionDir.y * a, -reflectionDir.y );
 	
-	return (T * cos(phi) * sinTheta + B * sin(phi) * sinTheta + reflectionDir * cosTheta);
+	return normalize(T * cos(phi) * sinTheta + B * sin(phi) * sinTheta + reflectionDir * cosTheta);
 }
+
 // //the following alternative skips the creation of tangent and bi-tangent vectors u and v 
 // vec3 randomCosWeightedDirectionInHemisphere( vec3 nl, inout uvec2 seed )
 // {
@@ -1369,6 +1394,7 @@ vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout u
 // 	float theta = 2.0 * rand(seed) - 1.0;
 // 	return nl + vec3(sqrt(1.0 - theta * theta) * vec2(cos(phi), sin(phi)), theta);
 // }
+
 // vec3 randomDirectionInPhongSpecular( vec3 reflectionDir, float roughness, inout uvec2 seed )
 // {
 // 	float phi = rand(seed) * TWO_PI;
@@ -1380,7 +1406,7 @@ vec3 randomDirectionInSpecularLobe( vec3 reflectionDir, float roughness, inout u
 // 	float radius = sqrt(max(0.0, 1.0 - cosTheta * cosTheta));
 // 	vec3 u = normalize( cross( abs(reflectionDir.x) > 0.1 ? vec3(0, 1, 0) : vec3(1, 0, 0), reflectionDir ) );
 // 	vec3 v = cross(reflectionDir, u);
-// 	return (u * cos(phi) * radius + v * sin(phi) * radius + reflectionDir * cosTheta);
+// 	return normalize(u * cos(phi) * radius + v * sin(phi) * radius + reflectionDir * cosTheta);
 // }
 `;
 
