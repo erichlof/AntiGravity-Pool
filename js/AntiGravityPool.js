@@ -180,7 +180,7 @@ function initPathTracingShaders()
         // app/game-specific uniforms go here
         pathTracingUniforms = 
         {
-                tPreviousTexture: { type: "t", value: screenTextureRenderTarget.texture },
+                tPreviousTexture: { type: "t", value: screenCopyRenderTarget.texture },
                 
                 uCameraIsMoving: { type: "b1", value: false },
                 uShotIsInProgress: { type: "b1", value: false },
@@ -970,44 +970,18 @@ function updateVariablesAndUniforms()
                         launchGhostAimingBall = true;
                         canLaunchGhostAimingBall = false;
                 }
-                if (sceneIsDynamic)
-                        sampleCounter = 1.0; // reset for continuous updating of image
-                else sampleCounter += 1.0; // for progressive refinement of image
-                
-                frameCounter  += 1.0;
-
-                cameraRecentlyMoving = false;  
         }
 
         if (cameraIsMoving) {
                 canLaunchGhostAimingBall = true;
                 launchGhostAimingBall = false;
-
-                sampleCounter = 1.0;
-                frameCounter += 1.0;
-
-                if (!cameraRecentlyMoving) {
-                        frameCounter = 1.0;
-                        cameraRecentlyMoving = true;
-                }
         }
 
         
-
-        pathTracingUniforms.uTime.value = elapsedTime;
         pathTracingUniforms.uShotIsInProgress.value = shotIsInProgress;
-        pathTracingUniforms.uCameraIsMoving.value = cameraIsMoving;
-        pathTracingUniforms.uSampleCounter.value = sampleCounter;
-        pathTracingUniforms.uFrameCounter.value = frameCounter;
-        //pathTracingUniforms.uRandomVector.value = randomVector.set(Math.random(), Math.random(), Math.random());
         
-        
-        // CAMERA
-        cameraControlsObject.updateMatrixWorld(true);
-        worldCamera.updateMatrixWorld(true);
-        pathTracingUniforms.uCameraMatrix.value.copy(worldCamera.matrixWorld);
-        screenOutputMaterial.uniforms.uOneOverSampleCounter.value = 1.0 / sampleCounter;
 
+        // INFO
         if (playerOneTurn) 
         {
                 if (playerOneWins)
