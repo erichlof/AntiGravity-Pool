@@ -7,7 +7,7 @@ html, body {
         margin: 0px;
         overflow: hidden;
         touch-action: none;
-        cursor: default;
+        cursor: default; 
 }
 
 #info {
@@ -24,6 +24,16 @@ html, body {
         position: fixed;
         left: 3%;
         bottom: 2%;
+        font-family: Arial;
+        color: #ffffff;
+        cursor: default;
+        user-select: none;
+}
+
+#instructions {
+        position: fixed;
+        left: 3%;
+        bottom: 1%;
         font-family: Arial;
         color: #ffffff;
         cursor: default;
