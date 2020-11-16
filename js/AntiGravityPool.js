@@ -1,5 +1,4 @@
 // game-specific variables go here
-var EPS_intersect;
 var sceneIsDynamic = true;
 var camFlightSpeed = 30;
 var initialCameraZ;
@@ -178,31 +177,8 @@ function initSceneData()
 function initPathTracingShaders() 
 {
         // app/game-specific uniforms go here
-        pathTracingUniforms = 
-        {
-                tPreviousTexture: { type: "t", value: screenCopyRenderTarget.texture },
-                
-                uCameraIsMoving: { type: "b1", value: false },
-                uShotIsInProgress: { type: "b1", value: false },
-        
-                uEPS_intersect: { type: "f", value: EPS_intersect },
-                uTime: { type: "f", value: 0.0 },
-                uSampleCounter: { type: "f", value: 0.0 },
-                uFrameCounter: { type: "f", value: 1.0 },
-                uULen: { type: "f", value: 1.0 },
-                uVLen: { type: "f", value: 1.0 },
-                uApertureSize: { type: "f", value: 0.0 },
-                uFocusDistance: { type: "f", value: 132.0 },
-        
-                uResolution: { type: "v2", value: new THREE.Vector2() },
-        
-                //uRandomVector: { type: "v3", value: new THREE.Vector3() },
-        
-                uCameraMatrix: { type: "m4", value: new THREE.Matrix4() },
-        
-                uBallPositions: { type: "v3v", value: ballPositions }
-        
-        };
+        pathTracingUniforms.uShotIsInProgress = { type: "b1", value: false };
+        pathTracingUniforms.uBallPositions = { type: "v3v", value: ballPositions };
 
         pathTracingDefines = 
         {
