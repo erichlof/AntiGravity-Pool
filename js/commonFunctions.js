@@ -50,6 +50,7 @@ let pinchDeltaX = 0;
 let pinchDeltaY = 0;
 let fontAspect;
 let useGenericInput = true;
+let sunAngularDiameterCos;
 let EPS_intersect;
 let blueNoiseTexture;
 
@@ -191,6 +192,8 @@ function init() {
                         //showJoystick: true
                 });
         }
+
+        sunAngularDiameterCos = mouseControl ? 0.9998 : 0.9995; // makes Sun a little bigger on mobile
 
         // if on mobile device, unpause the app because there is no ESC key and no mouse capture to do
         if (!mouseControl)
@@ -371,6 +374,7 @@ function initTHREEjs() {
                 uVLen: { type: "f", value: 1.0 },
                 uApertureSize: { type: "f", value: 0.0 },
                 uFocusDistance: { type: "f", value: focusDistance },
+                uSunAngularDiameterCos: { type: "f", value: sunAngularDiameterCos },
 
                 uResolution: { type: "v2", value: new THREE.Vector2() },
                 uRandomVec2: { type: "v2", value: new THREE.Vector2() },
