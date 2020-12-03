@@ -170,11 +170,6 @@ vec3 CalculateRadiance(Ray r)
 	float nc, nt, ratioIoR, Re, Tr;
 	float P, RP, TP;
 	float weight;
-	float randChoose;
-	float dotWithNearestLight = 0.0;
-	float aTest = 0.0;
-	float distanceToNearestLight = distance(boxes[0].minCorner, boxes[0].maxCorner);
-	float dTest = 0.0;
 
 	int intBest = 0;
 	int diffuseCount = 0;
@@ -186,10 +181,9 @@ vec3 CalculateRadiance(Ray r)
 
 	for (int bounces = 0; bounces < 4; bounces++)
 	{
-
+		
 		t = SceneIntersect(r, intersec);
 
-		 
 		// //not used in this scene because we are inside a large box shape - no rays can escape
 		// if (t == INFINITY)
                 //         break;
@@ -204,15 +198,7 @@ vec3 CalculateRadiance(Ray r)
 				break;
 			}
 	
-			// diffuse material or diffuse part of ClearCoat material sampling the light
-			if (sampleLight)
-			{
-				accumCol = mask * intersec.emission * 0.01;
-				break;
-			}
-				
-			// light source in a specular reflection (light source is reflected on pool balls)
-			if (bounceIsSpecular) 
+			if (bounceIsSpecular || sampleLight) 
 			{
 				accumCol = mask * intersec.emission;
 				break;
@@ -254,17 +240,13 @@ vec3 CalculateRadiance(Ray r)
 			// loop through the 8 sphere lights and find the best one to sample
 			for (int i = 0; i < N_SPHERES; i++)
 			{
-				aTest = dot(nl, normalize(spheres[i].position - x));
-				dTest = dot(normalize(-r.direction), normalize(spheres[i].position - x));
-
-				if (rand() < min(aTest, dTest))
-					intBest = i;
+				intBest = rand() < dot(nl, normalize(spheres[i].position - x)) ? i : intBest;
 			}
 			lightChoice = spheres[intBest];
 
-			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.15);
+			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.13);
 			mask *= N_LIGHTS;
-			mask *= max(0.0, dot(nl, dirToLight));
+			mask *= max(0.0, dot(nl, dirToLight)) * 0.005;
 
 			r = Ray( x, dirToLight );
 			r.origin += nl * uEPS_intersect;
@@ -340,7 +322,7 @@ vec3 CalculateRadiance(Ray r)
 			
 			bounceIsSpecular = false;
 
-			// if (diffuseCount == 1 && rand() < 0.1)
+			// if (diffuseCount == 1 && rand() < 0.5)
 			// {
 			// 	// choose random Diffuse sample vector
 			// 	r = Ray( x, randomCosWeightedDirectionInHemisphere(nl) );
@@ -348,19 +330,16 @@ vec3 CalculateRadiance(Ray r)
 			// 	continue;
 			// }
 
+			// loop through the 8 sphere lights and find the best one to sample
 			for (int i = 0; i < N_SPHERES; i++)
 			{
-				aTest = dot(nl, normalize(spheres[i].position - x));
-				dTest = dot(normalize(-r.direction), normalize(spheres[i].position - x));
-
-				if (rand() < min(aTest, dTest))
-					intBest = i;
+				intBest = rand() * 1.5 < dot(nl, normalize(spheres[i].position - x)) ? i : intBest;
 			}
 			lightChoice = spheres[intBest];
 
 			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.2);
 			mask *= N_LIGHTS;
-			mask *= max(0.0, dot(nl, dirToLight));
+			mask *= max(0.0, dot(nl, dirToLight)) * 0.01;
 			
 			r = Ray( x, dirToLight );
 			r.origin += nl * uEPS_intersect;
