@@ -219,93 +219,88 @@ float SphereIntersect( float rad, vec3 pos, Ray ray )
 }
 `;
 
-THREE.ShaderChunk[ 'pathtracing_ellipsoid_param_intersect' ] = `
+THREE.ShaderChunk[ 'pathtracing_sphere_csg_intersect' ] = `
 //------------------------------------------------------------------------------------------------------------
-float EllipsoidParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+void Sphere_CSG_Intersect( vec3 ro, vec3 rd, out float t0, out float t1, out vec3 n0, out vec3 n1 )
 //------------------------------------------------------------------------------------------------------------
 {
-	vec3 pHit;
-	float t0, t1, phi;
+	vec3 hit;
 	// implicit equation of a unit (radius of 1) sphere:
 	// x^2 + y^2 + z^2 - 1 = 0
 	float a = dot(rd, rd);
 	float b = 2.0 * dot(rd, ro);
 	float c = dot(ro, ro) - 1.0;
 	solveQuadratic(a, b, c, t0, t1);
-	
-	if ( t0 > 0.0 )
-	{
-		pHit = ro + rd * t0;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, 2.0 * pHit.y, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t0;
-	}
-	if ( t1 > 0.0 )
-	{
-		pHit = ro + rd * t1;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, 2.0 * pHit.y, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t1;
-	}
-	return INFINITY;
+
+	hit = ro + rd * t0;
+	n0 = vec3(2.0 * hit.x, 2.0 * hit.y, 2.0 * hit.z);
+
+	hit = ro + rd * t1;
+	n1 = vec3(2.0 * hit.x, 2.0 * hit.y, 2.0 * hit.z);
 }
 `;
 
-THREE.ShaderChunk[ 'pathtracing_cylinder_param_intersect' ] = `
+THREE.ShaderChunk[ 'pathtracing_cylinder_csg_intersect' ] = `
 //------------------------------------------------------------------------------------------------------------
-float CylinderParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+void Cylinder_CSG_Intersect( vec3 ro, vec3 rd, out float t0, out float t1, out vec3 n0, out vec3 n1 )
 //------------------------------------------------------------------------------------------------------------
 {
-	vec3 pHit;
-	float t0, t1, phi;
+	vec3 hit;
+	float d0, d1;
+	vec3 dn0, dn1;
 	// implicit equation of a unit (radius of 1) cylinder, extending infinitely in the +Y and -Y directions:
 	// x^2 + z^2 - 1 = 0
 	float a = (rd.x * rd.x + rd.z * rd.z);
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z);
     	float c = (ro.x * ro.x + ro.z * ro.z) - 1.0;
 	solveQuadratic(a, b, c, t0, t1);
-		
-	if ( t0 > 0.0 )
+
+	hit = ro + rd * t0;
+	t0 = (hit.y > 1.0 || hit.y < -1.0) ? 0.0 : t0;
+	n0 = vec3(2.0 * hit.x, 0.0, 2.0 * hit.z);
+
+	hit = ro + rd * t1;
+	t1 = (hit.y > 1.0 || hit.y < -1.0) ? 0.0 : t1;
+	n1 = vec3(2.0 * hit.x, 0.0, 2.0 * hit.z);
+
+	if (rd.y < 0.0)
 	{
-		pHit = ro + rd * t0;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, 0.0, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t0;
+		d0 = (ro.y - 1.0) / -rd.y;
+		dn0 = vec3(0,1,0);
+		d1 = (ro.y + 1.0) / -rd.y;
+		dn1 = vec3(0,-1,0);
 	}
-	if ( t1 > 0.0 )
+	else
 	{
-		pHit = ro + rd * t1;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, 0.0, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t1;
+		d1 = (ro.y - 1.0) / -rd.y;
+		dn1 = vec3(0,1,0);
+		d0 = (ro.y + 1.0) / -rd.y;
+		dn0 = vec3(0,-1,0);
 	}
-	return INFINITY;
+	
+	hit = ro + rd * d0;
+	if (hit.x * hit.x + hit.z * hit.z <= 1.0) // unit radius disk
+	{
+		t0 = d0;
+		n0 = dn0;
+	}
+	hit = ro + rd * d1;
+	if (hit.x * hit.x + hit.z * hit.z <= 1.0) // unit radius disk
+	{
+		t1 = d1;
+		n1 = dn1;
+	}
 }
 `;
 
-THREE.ShaderChunk[ 'pathtracing_cone_param_intersect' ] = `
+THREE.ShaderChunk[ 'pathtracing_cone_csg_intersect' ] = `
 //------------------------------------------------------------------------------------------------------------
-float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+void Cone_CSG_Intersect( vec3 ro, vec3 rd, out float t0, out float t1, out vec3 n0, out vec3 n1 )
 //------------------------------------------------------------------------------------------------------------
 {
-	vec3 pHit;
-	float t0, t1, phi;
+	vec3 hit;
+	float d;
+	vec3 dn;
 	// implicit equation of a double-cone extending infinitely in +Y and -Y directions
 	// x^2 + z^2 - y^2 = 0
 	// code below cuts off top cone, leaving bottom cone with apex at the top (+1.0), and circular base (radius of 1) at the bottom (-1.0)
@@ -313,42 +308,52 @@ float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadi
 	float a = rd.x * rd.x + rd.z * rd.z - k * rd.y * rd.y;
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z - k * rd.y * (ro.y - 1.0));
     	float c = ro.x * ro.x + ro.z * ro.z - k * (ro.y - 1.0) * (ro.y - 1.0);
-	
 	solveQuadratic(a, b, c, t0, t1);
-		
-	if ( t0 > 0.0 )
+
+	hit = ro + rd * t0;
+	t0 = (hit.y > 1.0 || hit.y < -1.0) ? 0.0 : t0; // invalidate t0 if it's outside unit radius bounds
+	n0 = vec3(2.0 * hit.x, 2.0 * (1.0 - hit.y) * k, 2.0 * hit.z);
+
+	hit = ro + rd * t1;
+	t1 = (hit.y > 1.0 || hit.y < -1.0) ? 0.0 : t1; // invalidate t1 if it's outside unit radius bounds
+	n1 = vec3(2.0 * hit.x, 2.0 * (1.0 - hit.y) * k, 2.0 * hit.z);
+
+	// since the infinite cone is artificially cut off, if t0 intersection was invalidated, try t1
+	if (t0 == 0.0)
 	{
-		pHit = ro + rd * t0;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, -2.0 * (pHit.y - 1.0) * k, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t0;
-	}
-	if ( t1 > 0.0 )
+		t0 = t1;
+		n0 = n1;
+	} 
+
+	// now intersect unit disk located at bottom opening of unit cone shape
+	d = (ro.y + 1.0) / -rd.y;
+	hit = ro + rd * d;
+	if (hit.x * hit.x + hit.z * hit.z <= 1.0) // unit radius disk
 	{
-		pHit = ro + rd * t1;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, -2.0 * (pHit.y - 1.0) * k, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t1;
+		if (rd.y < 0.0)
+		{
+			t1 = d;
+			n1 = vec3(0,-1,0);
+		}
+		else
+		{
+			t1 = t0;
+			n1 = n0;
+			t0 = d;
+			n0 = vec3(0,-1,0);
+		}
 	}
-	return INFINITY;
 }
 `;
 
-THREE.ShaderChunk[ 'pathtracing_paraboloid_param_intersect' ] = `
+THREE.ShaderChunk[ 'pathtracing_paraboloid_csg_intersect' ] = `
 //------------------------------------------------------------------------------------------------------------
-float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+void Paraboloid_CSG_Intersect( vec3 ro, vec3 rd, out float t0, out float t1, out vec3 n0, out vec3 n1 )
 //------------------------------------------------------------------------------------------------------------
 {
-	vec3 pHit;
-	float t0, t1, phi;
+	vec3 hit;
+	float d;
+	vec3 dn;
 	// implicit equation of a paraboloid (bowl or vase-shape extending infinitely in the +Y direction):
 	// x^2 + z^2 - y = 0
 	ro.y += 1.0; // this essentially centers the paraboloid so that the bottom is at -1.0 and 
@@ -358,33 +363,408 @@ float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiM
     	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z) - k * rd.y;
     	float c = (ro.x * ro.x + ro.z * ro.z) - k * ro.y;
 	solveQuadratic(a, b, c, t0, t1);
+
+	hit = ro + rd * t0;
+	t0 = (hit.y > 2.0) ? 0.0 : t0; // invalidate t0 if it's outside unit radius bounds
+	n0 = vec3(2.0 * hit.x, -1.0 * k, 2.0 * hit.z);
+
+	hit = ro + rd * t1;
+	t1 = (hit.y > 2.0) ? 0.0 : t1; // invalidate t1 if it's outside unit radius bounds
+	n1 = vec3(2.0 * hit.x, -1.0 * k, 2.0 * hit.z);
+
+	// since the infinite paraboloid is artificially cut off at the top,
+	// if t0 intersection was invalidated, try t1
+	if (t0 == 0.0)
+	{
+		t0 = t1;
+		n0 = n1;
+	} 
+
+	// now intersect unit disk located at top opening of unit paraboloid shape
+	d = (ro.y - 2.0) / -rd.y;
+	hit = ro + rd * d;
+	if (hit.x * hit.x + hit.z * hit.z <= 1.0) // unit radius disk
+	{
+		if (rd.y > 0.0)
+		{
+			t1 = d;
+			n1 = vec3(0,1,0);
+		}
+		else
+		{
+			t1 = t0;
+			n1 = n0;
+			t0 = d;
+			n0 = vec3(0,1,0);
+		}
+	}
+}
+`;
+
+THREE.ShaderChunk[ 'pathtracing_box_csg_intersect' ] = `
+//------------------------------------------------------------------------------------------------------------
+void Box_CSG_Intersect( vec3 ro, vec3 rd, out float t0, out float t1, out vec3 n0, out vec3 n1 )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 invDir = 1.0 / rd;
+	vec3 near = (vec3(-1) - ro) * invDir; // unit radius box: vec3(-1,-1,-1) min corner
+	vec3 far  = (vec3(1) - ro) * invDir;  // unit radius box: vec3(+1,+1,+1) max corner
+	
+	vec3 tmin = min(near, far);
+	vec3 tmax = max(near, far);
+
+	t0 = max( max(tmin.x, tmin.y), tmin.z);
+	t1 = min( min(tmax.x, tmax.y), tmax.z);
+	n0 = -sign(rd) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
+	n1 = -sign(rd) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
+
+	if (t0 > t1) // invalid intersection
+		t0 = t1 = 0.0;
+}
+`;
+
+THREE.ShaderChunk[ 'pathtracing_csg_operations' ] = `
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void CSG_Union_Operation( float A_t0, vec3 A_n0, float A_t1, vec3 A_n1, float B_t0, vec3 B_n0, float B_t1, vec3 B_n1, int A_type, vec3 A_color, int B_type, vec3 B_color, 
+			    out float t0, out vec3 n0, out float t1, out vec3 n1, out int type0, out vec3 color0, out int type1, out vec3 color1  )
+//-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+{
+	// CSG UNION OPERATION [A + B] (outside of shape A and outside of shape B are fused together into a single, new shape)
+	// (hypothetically, the interior volume of the newly created union could be completely filled with water in one pass)
+	
+	vec3 temp_n0, temp_n1, temp_col;
+	float temp_t0, temp_t1;
+	int temp_type;
+
+	// if shape B is closer than A, swap shapes
+	if (B_t0 < A_t0)
+	{
+		temp_t0 = A_t0;
+		temp_t1 = A_t1;
+		temp_n0 = A_n0;
+		temp_n1 = A_n1;
+		temp_col = A_color;
+		temp_type = A_type;
+
+		A_t0 = B_t0;
+		A_t1 = B_t1;
+		A_n0 = B_n0;
+		A_n1 = B_n1;
+		A_color = B_color;
+		A_type = B_type;
+
+		B_t0 = temp_t0;
+		B_t1 = temp_t1;
+		B_n0 = temp_n0;
+		B_n1 = temp_n1;
+		B_color = temp_col;
+		B_type = temp_type;
+	}
+
+	// shape A is always considered first
+	t0 = A_t0;
+	n0 = A_n0;
+	type0 = A_type;
+	color0 = A_color;
+	t1 = A_t1;
+	n1 = A_n1;
+	type1 = A_type;
+	color1 = A_color;
+	
+	// except for when the outside of shape B matches the outside of shape A
+	if (B_t0 == A_t0)
+	{
+		t0 = B_t0;
+		n0 = B_n0;
+		type0 = B_type;
+		color0 = B_color;
+	}
+
+	// A is behind us and completely in front of B
+	if (A_t1 <= 0.0 && A_t1 < B_t0)
+	{
+		t0 = B_t0;
+		n0 = B_n0;
+		type0 = B_type;
+		color0 = B_color;
+		t1 = B_t1;
+		n1 = B_n1;
+		type1 = B_type;
+		color1 = B_color;
+	}
+	else if (B_t0 <= A_t1 && B_t1 > A_t1)
+	{
+		t1 = B_t1;
+		n1 = B_n1;
+		type1 = B_type;
+		color1 = B_color;
+	}
+	else if (B_t0 <= A_t1 && B_t1 <= A_t1)
+	{
+		t1 = A_t1;
+		n1 = A_n1;
+		type1 = A_type;
+		color1 = A_color;
+	}
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void CSG_Difference_Operation( float A_t0, vec3 A_n0, float A_t1, vec3 A_n1, float B_t0, vec3 B_n0, float B_t1, vec3 B_n1, int A_type, vec3 A_color, int B_type, vec3 B_color, 
+				 out float t0, out vec3 n0, out float t1, out vec3 n1, out int type0, out vec3 color0, out int type1, out vec3 color1  )
+//----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+{
+	// CSG DIFFERENCE OPERATION [A - B] (shape A is carved out with shape B where the two shapes overlap)
+	
+	if ((B_t0 < A_t0 && B_t1 < A_t0) || (B_t0 > A_t1 && B_t1 > A_t1))
+	{
+		t0 = A_t0;
+		n0 = A_n0;
+		type0 = A_type;
+		color0 = A_color;
+		t1 = A_t1;
+		n1 = A_n1;
+		type1 = A_type;
+		color1 = A_color;
+	}
+	else if (B_t0 > 0.0 && B_t0 < A_t1 && B_t0 > A_t0)
+	{
+		t0 = A_t0;
+		n0 = A_n0;
+		type0 = A_type;
+		color0 = A_color;
+		t1 = B_t0;
+		n1 = B_n0;
+		type1 = B_type;
+		color1 = B_color;
+	}
+	else if (B_t1 > A_t0 && B_t1 < A_t1)
+	{
+		t0 = B_t1;
+		n0 = B_n1;
+		type0 = B_type;
+		color0 = B_color;
+		t1 = A_t1;
+		n1 = A_n1;
+		type1 = A_type;
+		color1 = A_color;
+	}
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+void CSG_Intersection_Operation( float A_t0, vec3 A_n0, float A_t1, vec3 A_n1, float B_t0, vec3 B_n0, float B_t1, vec3 B_n1, int A_type, vec3 A_color, int B_type, vec3 B_color, 
+				   out float t0, out vec3 n0, out float t1, out vec3 n1, out int type0, out vec3 color0, out int type1, out vec3 color1  )
+//------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+{
+	// CSG INTERSECTION OPERATION [A ^ B] (Only valid where shape A overlaps shape B)
+	// (ray must intersect both shape A and shape B)
+
+	vec3 temp_n0, temp_n1, temp_col;
+	float temp_t0, temp_t1;
+	int temp_type;
+
+	// if shape B is closer than A, swap shapes
+	if (B_t0 < A_t0)
+	{
+		temp_t0 = A_t0;
+		temp_t1 = A_t1;
+		temp_n0 = A_n0;
+		temp_n1 = A_n1;
+		temp_col = A_color;
+		temp_type = A_type;
+
+		A_t0 = B_t0;
+		A_t1 = B_t1;
+		A_n0 = B_n0;
+		A_n1 = B_n1;
+		A_color = B_color;
+		A_type = B_type;
+
+		B_t0 = temp_t0;
+		B_t1 = temp_t1;
+		B_n0 = temp_n0;
+		B_n1 = temp_n1;
+		B_color = temp_col;
+		B_type = temp_type;
+	}
+
+	if (B_t0 < A_t1)
+	{
+		t0 = B_t0;
+		n0 = B_n0;
+		// in surfaceA's space, so must use surfaceA's material
+		type0 = A_type; 
+		color0 = A_color;
+	}
+
+	if (A_t1 > B_t0 && A_t1 < B_t1)
+	{
+		t1 = A_t1;
+		n1 = A_n1;
+		// in surfaceB's space, so must use surfaceB's material
+		type1 = B_type;
+		color1 = B_color;
+	}
+	else if (B_t1 > A_t0 && B_t1 <= A_t1)
+	{
+		t1 = B_t1;
+		n1 = B_n1;
+		// in surfaceA's space, so must use surfaceA's material
+		type1 = A_type;
+		color1 = A_color;
+	}
+}
+`;
+
+THREE.ShaderChunk[ 'pathtracing_ellipsoid_param_intersect' ] = `
+//------------------------------------------------------------------------------------------------------------
+float EllipsoidParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 pHit;
+	float t, t0, t1, phi;
+	// implicit equation of a unit (radius of 1) sphere:
+	// x^2 + y^2 + z^2 - 1 = 0
+	float a = dot(rd, rd);
+	float b = 2.0 * dot(rd, ro);
+	float c = dot(ro, ro) - 1.0;
+
+	solveQuadratic(a, b, c, t0, t1);
+	if (t1 <= 0.0) return INFINITY;
+
+	t = t0 > 0.0 ? t0 : INFINITY;
+	pHit = ro + rd * t;
+	phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+
+	if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+	{
+		t = t1;
+		pHit = ro + rd * t;
+		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+		if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+			t = INFINITY;
+	}
+	
+	n = vec3(2.0 * pHit.x, 2.0 * pHit.y, 2.0 * pHit.z);
+	n = dot(rd, n) < 0.0 ? n : -n; // flip normal if it is facing away from us
+
+	return t;
+}
+`;
+
+THREE.ShaderChunk[ 'pathtracing_cylinder_param_intersect' ] = `
+//------------------------------------------------------------------------------------------------------------
+float CylinderParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 pHit;
+	float t, t0, t1, phi;
+	// implicit equation of a unit (radius of 1) cylinder, extending infinitely in the +Y and -Y directions:
+	// x^2 + z^2 - 1 = 0
+	float a = (rd.x * rd.x + rd.z * rd.z);
+    	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z);
+    	float c = (ro.x * ro.x + ro.z * ro.z) - 1.0;
+
+	solveQuadratic(a, b, c, t0, t1);
+	if (t1 <= 0.0) return INFINITY;
+		
+	t = t0 > 0.0 ? t0 : INFINITY;
+	pHit = ro + rd * t;
+	phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+
+	if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+	{
+		t = t1;
+		pHit = ro + rd * t;
+		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+		if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+			t = INFINITY;
+	}
+	
+	n = vec3(2.0 * pHit.x, 0.0, 2.0 * pHit.z);
+	n = dot(rd, n) < 0.0 ? n : -n; // flip normal if it is facing away from us
+		
+	return t;
+}
+`;
+
+THREE.ShaderChunk[ 'pathtracing_cone_param_intersect' ] = `
+//------------------------------------------------------------------------------------------------------------
+float ConeParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 pHit;
+	float t, t0, t1, phi;
+	// implicit equation of a double-cone extending infinitely in +Y and -Y directions
+	// x^2 + z^2 - y^2 = 0
+	// code below cuts off top cone, leaving bottom cone with apex at the top (+1.0), and circular base (radius of 1) at the bottom (-1.0)
+	float k = 0.25;
+	float a = rd.x * rd.x + rd.z * rd.z - k * rd.y * rd.y;
+    	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z - k * rd.y * (ro.y - 1.0));
+    	float c = ro.x * ro.x + ro.z * ro.z - k * (ro.y - 1.0) * (ro.y - 1.0);
+	
+	solveQuadratic(a, b, c, t0, t1);
+	if (t1 <= 0.0) return INFINITY;
+		
+	t = t0 > 0.0 ? t0 : INFINITY;
+	pHit = ro + rd * t;
+	phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+
+	if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+	{
+		t = t1;
+		pHit = ro + rd * t;
+		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+		if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+			t = INFINITY;
+	}
+
+	n = vec3(2.0 * pHit.x, 2.0 * (1.0 - pHit.y) * k, 2.0 * pHit.z);
+	n = dot(rd, n) < 0.0 ? n : -n; // flip normal if it is facing away from us
+
+	return t;
+}
+`;
+
+THREE.ShaderChunk[ 'pathtracing_paraboloid_param_intersect' ] = `
+//------------------------------------------------------------------------------------------------------------
+float ParaboloidParamIntersect( float yMinPercent, float yMaxPercent, float phiMaxRadians, vec3 ro, vec3 rd, out vec3 n )
+//------------------------------------------------------------------------------------------------------------
+{
+	vec3 pHit;
+	float t, t0, t1, phi;
+	// implicit equation of a paraboloid (bowl or vase-shape extending infinitely in the +Y direction):
+	// x^2 + z^2 - y = 0
+	ro.y += 1.0; // this essentially centers the paraboloid so that the bottom is at -1.0 and 
+		     // the open circular top (radius of 1) is at +1.0
+	float k = 0.5;
+	float a = (rd.x * rd.x + rd.z * rd.z);
+    	float b = 2.0 * (rd.x * ro.x + rd.z * ro.z) - k * rd.y;
+    	float c = (ro.x * ro.x + ro.z * ro.z) - k * ro.y;
+
+	solveQuadratic(a, b, c, t0, t1);
+	if (t1 <= 0.0) return INFINITY;
 	
 	// this takes into account that we shifted the ray origin by +1.0
 	yMaxPercent += 1.0;
 	yMinPercent += 1.0;
-	if ( t0 > 0.0 )
+
+	t = t0 > 0.0 ? t0 : INFINITY;
+	pHit = ro + rd * t;
+	phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+
+	if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
 	{
-		pHit = ro + rd * t0;
+		t = t1;
+		pHit = ro + rd * t;
 		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, -1.0 * k, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t0;
+		if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+			t = INFINITY;
 	}
-	if ( t1 > 0.0 )
-	{
-		pHit = ro + rd * t1;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, -1.0 * k, 2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t1;
-	}
-	return INFINITY;
+	
+	n = vec3(2.0 * pHit.x, -1.0 * k, 2.0 * pHit.z);
+	n = dot(rd, n) < 0.0 ? n : -n; // flip normal if it is facing away from us
+			
+	return t;
 }
 `;
 
@@ -394,7 +774,7 @@ float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, 
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t0, t1, phi;
+	float t, t0, t1, phi;
 	// implicit equation of a hyperboloid of 1 sheet (hourglass shape extending infinitely in the +Y and -Y directions):
 	// x^2 + z^2 - y^2 - 1 = 0
 	// implicit equation of a hyperboloid of 2 sheets (2 mirrored opposing paraboloids, non-connecting, top extends infinitely in +Y, bottom in -Y):
@@ -406,30 +786,27 @@ float HyperboloidParamIntersect( float k, float yMinPercent, float yMaxPercent, 
 	float a = k * rd.x * rd.x + k * rd.z * rd.z - j * rd.y * rd.y;
 	float b = 2.0 * (k * rd.x * ro.x + k * rd.z * ro.z - j * rd.y * ro.y);
 	float c = (k * ro.x * ro.x + k * ro.z * ro.z - j * ro.y * ro.y) - 1.0;
+
 	solveQuadratic(a, b, c, t0, t1);
+	if (t1 <= 0.0) return INFINITY;
 	
-	if ( t0 > 0.0 )
+	t = t0 > 0.0 ? t0 : INFINITY;
+	pHit = ro + rd * t;
+	phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+
+	if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
 	{
-		pHit = ro + rd * t0;
+		t = t1;
+		pHit = ro + rd * t;
 		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x * k, -2.0 * pHit.y * j, 2.0 * pHit.z * k);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
+		if (pHit.y > yMaxPercent || pHit.y < yMinPercent || phi > phiMaxRadians)
+			t = INFINITY;
+	}
+	
+	n = vec3(2.0 * pHit.x * k, 2.0 * -pHit.y * j, 2.0 * pHit.z * k);
+	n = dot(rd, n) < 0.0 ? n : -n; // flip normal if it is facing away from us
 		
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t0;
-	}
-	if ( t1 > 0.0 )
-	{
-		pHit = ro + rd * t1;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x * k, -2.0 * pHit.y * j, 2.0 * pHit.z * k);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		if (pHit.y < yMaxPercent && pHit.y > yMinPercent && phi < phiMaxRadians)
-			return t1;
-	}
-	return INFINITY;
+	return t;
 }
 `;
 
@@ -439,35 +816,33 @@ float HyperbolicParaboloidParamIntersect( float yMinPercent, float yMaxPercent, 
 //------------------------------------------------------------------------------------------------------------
 {
 	vec3 pHit;
-	float t0, t1, phi;
+	float t, t0, t1, phi;
 	// implicit equation of an infinite hyperbolic paraboloid (saddle shape):
 	// x^2 - z^2 - y = 0
 	float a = rd.x * rd.x - rd.z * rd.z;
 	float b = 2.0 * (rd.x * ro.x - rd.z * ro.z) - rd.y;
 	float c = (ro.x * ro.x - ro.z * ro.z) - ro.y;
+
 	solveQuadratic(a, b, c, t0, t1);
-	if ( t0 > 0.0 )
+	if (t1 <= 0.0) return INFINITY;
+
+	t = t0 > 0.0 ? t0 : INFINITY;
+	pHit = ro + rd * t;
+	phi = mod(atan(pHit.z, pHit.x), TWO_PI);
+
+	if (abs(pHit.x) > yMaxPercent || abs(pHit.y) > yMaxPercent || abs(pHit.z) > yMaxPercent || phi > phiMaxRadians)
 	{
-		pHit = ro + rd * t0;
+		t = t1;
+		pHit = ro + rd * t;
 		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, -1.0, -2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
-		if (abs(pHit.x) < yMaxPercent && abs(pHit.y) < yMaxPercent && abs(pHit.z) < yMaxPercent && phi < phiMaxRadians)
-			return t0;
+		if (abs(pHit.x) > yMaxPercent || abs(pHit.y) > yMaxPercent || abs(pHit.z) > yMaxPercent || phi > phiMaxRadians)
+			t = INFINITY;
 	}
-	if ( t1 > 0.0 )
-	{
-		pHit = ro + rd * t1;
-		phi = mod(atan(pHit.z, pHit.x), TWO_PI);
-		n = vec3(2.0 * pHit.x, -1.0, -2.0 * pHit.z);
-		// flip normal if it is facing away from us
-		n *= sign(-dot(rd, n)) * 2.0 - 1.0; // sign is 0 or 1, map it to -1 and +1
+	
+	n = vec3(2.0 * pHit.x, -1.0, -2.0 * pHit.z);
+	n = dot(rd, n) < 0.0 ? n : -n; // flip normal if it is facing away from us
 		
-		if (abs(pHit.x) < yMaxPercent && abs(pHit.y) < yMaxPercent && abs(pHit.z) < yMaxPercent && phi < phiMaxRadians)
-			return t1;
-	}
-	return INFINITY;
+	return t;
 }
 `;
 
@@ -1118,7 +1493,8 @@ float BoundingBoxIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3
 	float t0 = max( max(tmin.x, tmin.y), tmin.z);
 	float t1 = min( min(tmax.x, tmax.y), tmax.z);
 	
-	return (t0 > t1 || t1 < 0.0) ? INFINITY : t0;
+	//return t1 >= max(t0, 0.0) ? t0 : INFINITY;
+	return max(t0, 0.0) > t1 ? INFINITY : t0;
 }
 `;
 
