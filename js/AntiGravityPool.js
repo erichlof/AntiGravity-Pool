@@ -179,6 +179,9 @@ function initPathTracingShaders()
         // app/game-specific uniforms go here
         pathTracingUniforms.uShotIsInProgress = { type: "b1", value: false };
         pathTracingUniforms.uBallPositions = { type: "v3v", value: ballPositions };
+        pathTracingUniforms.uColorEdgeSharpeningRate = { type: "f", value: 1.0 };
+        pathTracingUniforms.uNormalEdgeSharpeningRate = { type: "f", value: 1.0 };
+        pathTracingUniforms.uObjectEdgeSharpeningRate = { type: "f", value: 0.0 };
 
         pathTracingDefines = 
         {
