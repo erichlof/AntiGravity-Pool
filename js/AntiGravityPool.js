@@ -181,7 +181,7 @@ function initPathTracingShaders()
         pathTracingUniforms.uBallPositions = { type: "v3v", value: ballPositions };
         pathTracingUniforms.uColorEdgeSharpeningRate = { type: "f", value: 1.0 };
         pathTracingUniforms.uNormalEdgeSharpeningRate = { type: "f", value: 1.0 };
-        pathTracingUniforms.uObjectEdgeSharpeningRate = { type: "f", value: 0.0 };
+        pathTracingUniforms.uObjectEdgeSharpeningRate = { type: "f", value: 0.1 };
 
         pathTracingDefines = 
         {
