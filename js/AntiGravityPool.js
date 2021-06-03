@@ -88,7 +88,7 @@ function initSceneData()
         useGenericInput = false;
         
         // set camera's field of view
-        worldCamera.fov = 40;
+        worldCamera.fov = mouseControl ? 40 : 30;
         EPS_intersect = mouseControl ? 0.01 : 1.0; // less precision on mobile
         initialCameraZ = 0;//mouseControl ? 4 : 0; // close to cueball is better for mobile
 
@@ -179,9 +179,6 @@ function initPathTracingShaders()
         // app/game-specific uniforms go here
         pathTracingUniforms.uShotIsInProgress = { type: "b1", value: false };
         pathTracingUniforms.uBallPositions = { type: "v3v", value: ballPositions };
-        pathTracingUniforms.uColorEdgeSharpeningRate = { type: "f", value: 1.0 };
-        pathTracingUniforms.uNormalEdgeSharpeningRate = { type: "f", value: 1.0 };
-        pathTracingUniforms.uObjectEdgeSharpeningRate = { type: "f", value: 0.1 };
 
         pathTracingDefines = 
         {
@@ -239,6 +236,7 @@ function startNewGame()
         shotFlip = 1;
         shotIsInProgress = false;
         playerIsAiming = true;
+        cameraRotationSpeed = mouseControl ? 0.5 : 0.35;
         launchGhostAimingBall = true;
         playerOneTurn = true;
         playerTwoTurn = false;
@@ -462,6 +460,7 @@ function updateOimoPhysics()
                 shotIsInProgress = false;
                 isBreakShot = false;
                 playerIsAiming = true;
+                cameraRotationSpeed = mouseControl ? 0.5 : 0.35;
                 launchGhostAimingBall = true;
 
                 // no balls were pocketed, switch turns
@@ -803,6 +802,7 @@ function updateVariablesAndUniforms()
                         
                         isShooting = false;
                         playerIsAiming = false;
+                        cameraRotationSpeed = 1;
                         shotIsInProgress = true;
                         cameraZOffset = 0;
 
