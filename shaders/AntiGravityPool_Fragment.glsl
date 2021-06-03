@@ -71,6 +71,7 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 	float d = INFINITY;
 	float t = INFINITY;
 	vec3 n;
+	int objectCount = 0;
 	
 	d = BoxInteriorIntersect( boxes[0].minCorner, boxes[0].maxCorner, r, n );
 	if (d < t)
@@ -80,8 +81,9 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 		intersec.emission = boxes[0].emission;
 		intersec.color = boxes[0].color;
 		intersec.type = boxes[0].type;
-		intersectedObjectID = 0.0;
+		intersectedObjectID = float(objectCount);
 	}
+	objectCount++;
 
 	// white cueball / glass aiming ball
 	d = SphereIntersect( 2.0, uBallPositions[0], r );
@@ -93,8 +95,9 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 		//intersec.color = uShotIsInProgress ? vec3(1) : vec3(2);
 		intersec.color = vec3(1);
 		intersec.type = uShotIsInProgress ? COAT : REFR;
-		intersectedObjectID = 1.0;
+		intersectedObjectID = float(objectCount);
 	}
+	objectCount++;
 	
 	// black ball
 	d = SphereIntersect( 2.0, uBallPositions[1], r );
@@ -105,8 +108,9 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 		intersec.emission = vec3(0);
 		intersec.color = vec3(0.005);
 		intersec.type = COAT;
-		intersectedObjectID = 2.0;
+		intersectedObjectID = float(objectCount);
 	}
+	objectCount++;
 	
 	// red balls
 	for (int i = 2; i < 9; i++)
@@ -119,8 +123,9 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 			intersec.emission = vec3(0);
 			intersec.color = vec3(1.0, 0.0, 0.0);
 			intersec.type = COAT;
-			intersectedObjectID = 3.0;
+			intersectedObjectID = float(objectCount);
 		}
+		objectCount++;
 	}
 
 	// yellow balls
@@ -134,8 +139,9 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 			intersec.emission = vec3(0);
 			intersec.color = vec3(1.0, 1.0, 0.0);
 			intersec.type = COAT;
-			intersectedObjectID = 4.0;
+			intersectedObjectID = float(objectCount);
 		}
+		objectCount++;
 	}
 
 	// pockets / lights
@@ -149,8 +155,9 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 			intersec.emission = spheres[i].emission;
 			intersec.color = spheres[i].color;
 			intersec.type = spheres[i].type;
-			intersectedObjectID = 5.0;
+			intersectedObjectID = float(objectCount);
 		}
+		objectCount++;
 	}
 
 	
@@ -178,18 +185,19 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 	float weight;
 	float intersectedObjectID;
 
+	int previousIntersecType = -100;
+	intersec.type = -100;
 	int intBest = 0;
 	int diffuseCount = 0;
-	int previousIntersecType = -100;
 
+	bool coatTypeIntersected = false;
 	bool bounceIsSpecular = true;
 	bool sampleLight = false;
-	bool lastTypeWasREFR = false;
 
 
 	for (int bounces = 0; bounces < 4; bounces++)
 	{
-		
+		previousIntersecType = intersec.type;
 		t = SceneIntersect(r, intersec, intersectedObjectID);
 
 		// //not used in this scene because we are inside a large box shape - no rays can escape
@@ -212,14 +220,16 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 		
 		if (intersec.type == LIGHT)
 		{	
-			if (diffuseCount == 0)
-			{
-				objectNormal = nl;
-				pixelSharpness = 1.0;
-			}
+			if (bounces == 0) 
+				pixelSharpness = 1.01;
+			else if (coatTypeIntersected && diffuseCount == 0)
+				pixelSharpness = 1.01;
+			else if (previousIntersecType == REFR)
+				pixelSharpness = -1.0;
+			
 
 			// viewing light directly, or seeing light source through aiming cueball glass
-			if (bounces == 0 || lastTypeWasREFR) 
+			if (bounces == 0 || (previousIntersecType == REFR && diffuseCount == 0)) 
 			{
 				accumCol = mask * clamp(intersec.emission, 0.0, 5.0);
 				break;
@@ -243,15 +253,11 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 		    
                 if (intersec.type == DIFF) // Ideal DIFFUSE reflection
 		{
-			previousIntersecType = DIFF;
-
 			diffuseCount++;
 
 			mask *= intersec.color;
 			
 			bounceIsSpecular = false;
-
-			lastTypeWasREFR = false;
 
 			if (diffuseCount == 1 && rand() < 0.5)
 			{
@@ -282,8 +288,6 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 		
 		if (intersec.type == REFR)  // Ideal dielectric REFRACTION
 		{
-			previousIntersecType = REFR;
-
 			nc = 1.0; // IOR of Air
 			nt = 1.3; // IOR of special Glass aiming cueball for this game
 
@@ -294,7 +298,6 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
                 	RP = Re / P;
                 	TP = Tr / (1.0 - P);
 
-
 			if (rand() < P)
 			{
 				mask *= RP;
@@ -303,8 +306,9 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 				continue;
 			}
 
-			// if (bounces == 1)
-			// 	mask = vec3(2.0);
+			// make glass aiming cueball brighter
+			if (diffuseCount == 0 && bounces == 1)
+				mask = uEPS_intersect == 1.0 ? vec3(6) : vec3(2); // make even brighter on mobile
 
 			mask *= intersec.color;
 			mask *= TP;
@@ -314,8 +318,6 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			r = Ray(x, tdir);
 			r.origin -= nl * uEPS_intersect;
 
-			lastTypeWasREFR = true;
-
 			continue;
 			
 		} // end if (intersec.type == REFR)
@@ -323,7 +325,7 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 		
 		if (intersec.type == COAT)  // Diffuse object underneath with ClearCoat on top
 		{
-			previousIntersecType = COAT;
+			coatTypeIntersected = true;
 
 			nc = 1.0; // IOR of Air
 			nt = 1.8; // IOR of very thick ClearCoat for pool balls
@@ -333,8 +335,6 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
                 	RP = Re / P;
                 	TP = Tr / (1.0 - P);
 
-			lastTypeWasREFR = false;
-
 			if (rand() < P)
 			{
 				mask *= RP;
@@ -342,7 +342,7 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 				r.origin += nl * uEPS_intersect;
 				continue;
 			}
-			
+
 			diffuseCount++;
 
 			mask *= TP;
@@ -433,6 +433,7 @@ void main( void )
 	randVec4 = texelFetch(tBlueNoiseTexture, ivec2(mod(gl_FragCoord.xy + floor(uRandomVec2 * 256.0), 256.0)), 0);
 	
 	vec2 pixelOffset = vec2( tentFilter(rng()), tentFilter(rng()) ) * 0.5;
+	//vec2 pixelOffset = vec2(0);
 	
 	// we must map pixelPos into the range -1.0 to +1.0
 	vec2 pixelPos = ((gl_FragCoord.xy + pixelOffset) / uResolution) * 2.0 - 1.0;
@@ -496,15 +497,24 @@ void main( void )
 		currentPixel.rgb *= 0.1; // brightness of new image (noisy)
 	}
 
-	currentPixel.a = pixelSharpness;
-
-	currentPixel.a = colorDifference  >= 1.0 ? min(uSampleCounter * uColorEdgeSharpeningRate , 1.01) : currentPixel.a;
-	currentPixel.a = normalDifference >= 1.0 ? min(uSampleCounter * uNormalEdgeSharpeningRate, 1.01) : currentPixel.a;
-	currentPixel.a = objectDifference >= 1.0 ? min(uSampleCounter * uObjectEdgeSharpeningRate, 1.01) : currentPixel.a;
+	currentPixel.a = 0.0;
+	// if (pixelSharpness == 0.0 && colorDifference == 0.0 && (normalDifference >= 1.0 || objectDifference >= 1.0))
+	// 	pixelSharpness = 1.01;
 	
 	// Eventually, all edge-containing pixels' .a (alpha channel) values will converge to 1.01, which keeps them from getting blurred by the box-blur filter, thus retaining sharpness.
-	if (pixelSharpness == 1.0 || previousPixel.a == 1.01)
+	if (previousPixel.a == 1.01)
 		currentPixel.a = 1.01;
+	if (previousPixel.a == -1.0)
+		currentPixel.a = 0.0;
+
+	if (pixelSharpness == 1.01)
+		currentPixel.a = 1.01;
+	if (pixelSharpness == -1.0)
+		currentPixel.a = -1.0;
+	// if (pixelSharpness == 1.0)
+	// 	currentPixel.a = 1.0;
+	
+	
 	
 	
 	pc_fragColor = vec4(previousPixel.rgb + currentPixel.rgb, currentPixel.a);
