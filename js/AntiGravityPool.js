@@ -82,7 +82,8 @@ function initSceneData()
 {        
         // game-specific three.js variables / Oimo.js physics setup goes here
 
-        //pixelRatio = 1.0; // for computers with the latest GPUs!
+        // pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
+        pixelRatio = mouseControl ? 0.75 : 0.75; // less demanding on battery-powered mobile devices
 
         // we will use our own custom input handling for this game
         useGenericInput = false;
@@ -90,7 +91,7 @@ function initSceneData()
         // set camera's field of view
         worldCamera.fov = mouseControl ? 40 : 30;
         EPS_intersect = mouseControl ? 0.01 : 1.0; // less precision on mobile
-        initialCameraZ = 0;//mouseControl ? 4 : 0; // close to cueball is better for mobile
+        initialCameraZ = 0; // close to cueball is better
 
         for (let i = 0; i < 24; i++)
         {
