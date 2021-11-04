@@ -85,12 +85,14 @@ function initSceneData()
         // pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
         pixelRatio = mouseControl ? 0.75 : 0.75; // less demanding on battery-powered mobile devices
 
+        EPS_intersect = 0.001;
+
         // we will use our own custom input handling for this game
         useGenericInput = false;
         
         // set camera's field of view
         worldCamera.fov = mouseControl ? 40 : 30;
-        EPS_intersect = mouseControl ? 0.01 : 1.0; // less precision on mobile
+        
         initialCameraZ = 0; // close to cueball is better
 
         for (let i = 0; i < 24; i++)
