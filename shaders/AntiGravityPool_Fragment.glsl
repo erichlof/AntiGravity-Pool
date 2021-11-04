@@ -13,10 +13,15 @@ uniform bool uShotIsInProgress;
 
 //-----------------------------------------------------------------------
 
-struct Ray { vec3 origin; vec3 direction; };
+vec3 rayOrigin, rayDirection;
+// recorded intersection data:
+vec3 hitNormal, hitEmission, hitColor;
+vec2 hitUV;
+float hitObjectID;
+int hitType;
+
 struct Sphere { float radius; vec3 position; vec3 emission; vec3 color; int type; };
 struct Box { vec3 minCorner; vec3 maxCorner; vec3 emission; vec3 color; int type; };
-struct Intersection { vec3 normal; vec3 emission; vec3 color; int type; };
 
 Sphere spheres[N_SPHERES];
 Box boxes[N_BOXES];
@@ -29,13 +34,13 @@ Box boxes[N_BOXES];
 #include <pathtracing_sphere_intersect>
 
 
-//----------------------------------------------------------------------------------
-float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 normal )
-//----------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------------
+float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3 rayDirection, out vec3 normal )
+//--------------------------------------------------------------------------------------------------------------
 {
-	vec3 invDir = 1.0 / r.direction;
-	vec3 near = (minCorner - r.origin) * invDir;
-	vec3 far  = (maxCorner - r.origin) * invDir;
+	vec3 invDir = 1.0 / rayDirection;
+	vec3 near = (minCorner - rayOrigin) * invDir;
+	vec3 far  = (maxCorner - rayOrigin) * invDir;
 	
 	vec3 tmin = min(near, far);
 	vec3 tmax = max(near, far);
@@ -48,14 +53,14 @@ float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 norm
 	/*
 	if (t0 > 0.0) // if we are outside the box
 	{
-		normal = -sign(r.direction) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
+		normal = -sign(rayDirection) * step(tmin.yzx, tmin) * step(tmin.zxy, tmin);
 		return t0;	
 	}
 	*/
 
 	if (t1 > 0.0) // if we are inside the box
 	{
-		normal = -sign(r.direction) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
+		normal = -sign(rayDirection) * step(tmax, tmax.yzx) * step(tmax, tmax.zxy);
 		return t1;
 	}
 
@@ -65,7 +70,7 @@ float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, Ray r, out vec3 norm
 
 
 //---------------------------------------------------------------------------------------
-float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedObjectID )
+float SceneIntersect( )
 //---------------------------------------------------------------------------------------
 {
 	float d = INFINITY;
@@ -73,57 +78,57 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 	vec3 n;
 	int objectCount = 0;
 	
-	d = BoxInteriorIntersect( boxes[0].minCorner, boxes[0].maxCorner, r, n );
+	d = BoxInteriorIntersect( boxes[0].minCorner, boxes[0].maxCorner, rayOrigin, rayDirection, n );
 	if (d < t)
 	{
 		t = d;
-		intersec.normal = normalize(n);
-		intersec.emission = boxes[0].emission;
-		intersec.color = boxes[0].color;
-		intersec.type = boxes[0].type;
-		intersectedObjectID = float(objectCount);
+		hitNormal = normalize(n);
+		hitEmission = boxes[0].emission;
+		hitColor = boxes[0].color;
+		hitType = boxes[0].type;
+		hitObjectID = float(objectCount);
 	}
 	objectCount++;
 
 	// white cueball / glass aiming ball
-	d = SphereIntersect( 2.0, uBallPositions[0], r );
+	d = SphereIntersect( 2.0, uBallPositions[0], rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
-		intersec.normal = normalize((r.origin + r.direction * t) - uBallPositions[0]);
-		intersec.emission = vec3(0);
-		//intersec.color = uShotIsInProgress ? vec3(1) : vec3(2);
-		intersec.color = vec3(1);
-		intersec.type = uShotIsInProgress ? COAT : REFR;
-		intersectedObjectID = float(objectCount);
+		hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[0]);
+		hitEmission = vec3(0);
+		//hitColor = uShotIsInProgress ? vec3(1) : vec3(2);
+		hitColor = vec3(1);
+		hitType = uShotIsInProgress ? COAT : REFR;
+		hitObjectID = float(objectCount);
 	}
 	objectCount++;
 	
 	// black ball
-	d = SphereIntersect( 2.0, uBallPositions[1], r );
+	d = SphereIntersect( 2.0, uBallPositions[1], rayOrigin, rayDirection );
 	if (d < t)
 	{
 		t = d;
-		intersec.normal = normalize((r.origin + r.direction * t) - uBallPositions[1]);
-		intersec.emission = vec3(0);
-		intersec.color = vec3(0.005);
-		intersec.type = COAT;
-		intersectedObjectID = float(objectCount);
+		hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[1]);
+		hitEmission = vec3(0);
+		hitColor = vec3(0.005);
+		hitType = COAT;
+		hitObjectID = float(objectCount);
 	}
 	objectCount++;
 	
 	// red balls
 	for (int i = 2; i < 9; i++)
         {
-		d = SphereIntersect( 2.0, uBallPositions[i], r );
+		d = SphereIntersect( 2.0, uBallPositions[i], rayOrigin, rayDirection );
 		if (d < t)
 		{
 			t = d;
-			intersec.normal = normalize((r.origin + r.direction * t) - uBallPositions[i]);
-			intersec.emission = vec3(0);
-			intersec.color = vec3(1.0, 0.0, 0.0);
-			intersec.type = COAT;
-			intersectedObjectID = float(objectCount);
+			hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[i]);
+			hitEmission = vec3(0);
+			hitColor = vec3(1.0, 0.0, 0.0);
+			hitType = COAT;
+			hitObjectID = float(objectCount);
 		}
 		objectCount++;
 	}
@@ -131,15 +136,15 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 	// yellow balls
 	for (int i = 9; i < 16; i++)
         {
-		d = SphereIntersect( 2.0, uBallPositions[i], r );
+		d = SphereIntersect( 2.0, uBallPositions[i], rayOrigin, rayDirection );
 		if (d < t)
 		{
 			t = d;
-			intersec.normal = normalize((r.origin + r.direction * t) - uBallPositions[i]);
-			intersec.emission = vec3(0);
-			intersec.color = vec3(1.0, 1.0, 0.0);
-			intersec.type = COAT;
-			intersectedObjectID = float(objectCount);
+			hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[i]);
+			hitEmission = vec3(0);
+			hitColor = vec3(1.0, 1.0, 0.0);
+			hitType = COAT;
+			hitObjectID = float(objectCount);
 		}
 		objectCount++;
 	}
@@ -147,15 +152,15 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 	// pockets / lights
         for (int i = 0; i < N_SPHERES; i++)
         {
-		d = SphereIntersect( spheres[i].radius, spheres[i].position, r );
+		d = SphereIntersect( spheres[i].radius, spheres[i].position, rayOrigin, rayDirection );
 		if (d < t)
 		{
 			t = d;
-			intersec.normal = normalize((r.origin + r.direction * t) - spheres[i].position);
-			intersec.emission = spheres[i].emission;
-			intersec.color = spheres[i].color;
-			intersec.type = spheres[i].type;
-			intersectedObjectID = float(objectCount);
+			hitNormal = normalize((rayOrigin + rayDirection * t) - spheres[i].position);
+			hitEmission = spheres[i].emission;
+			hitColor = spheres[i].color;
+			hitType = spheres[i].type;
+			hitObjectID = float(objectCount);
 		}
 		objectCount++;
 	}
@@ -163,14 +168,13 @@ float SceneIntersect( Ray r, inout Intersection intersec, out float intersectedO
 	
 	return t;
 	
-} // end float SceneIntersect( Ray r, inout Intersection intersec )
+} // end float SceneIntersect( )
 
 
 //-----------------------------------------------------------------------------------------------------------------------------
-vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out float objectID, out float pixelSharpness )
+vec3 CalculateRadiance( out vec3 objectNormal, out vec3 objectColor, out float objectID, out float pixelSharpness )
 //-----------------------------------------------------------------------------------------------------------------------------
 {
-	Intersection intersec;
 	Sphere lightChoice;
 
 	vec3 accumCol = vec3(0);
@@ -183,10 +187,9 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 	float nc, nt, ratioIoR, Re, Tr;
 	float P, RP, TP;
 	float weight;
-	float intersectedObjectID;
 
 	int previousIntersecType = -100;
-	intersec.type = -100;
+	hitType = -100;
 	int intBest = 0;
 	int diffuseCount = 0;
 
@@ -197,8 +200,9 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 
 	for (int bounces = 0; bounces < 4; bounces++)
 	{
-		previousIntersecType = intersec.type;
-		t = SceneIntersect(r, intersec, intersectedObjectID);
+		previousIntersecType = hitType;
+		
+		t = SceneIntersect();
 
 		// //not used in this scene because we are inside a large box shape - no rays can escape
 		if (t == INFINITY)
@@ -206,19 +210,19 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 
 
 		// useful data 
-		n = normalize(intersec.normal);
-                nl = dot(n, r.direction) < 0.0 ? normalize(n) : normalize(-n);
-		x = r.origin + r.direction * t;
+		n = normalize(hitNormal);
+                nl = dot(n, rayDirection) < 0.0 ? normalize(n) : normalize(-n);
+		x = rayOrigin + rayDirection * t;
 
 		if (bounces == 0)
 		{
 			objectNormal = nl;
-			objectColor = intersec.color;
-			objectID = intersectedObjectID;
+			objectColor = hitColor;
+			objectID = hitObjectID;
 		}
 		
 		
-		if (intersec.type == LIGHT)
+		if (hitType == LIGHT)
 		{	
 			if (bounces == 0) 
 				pixelSharpness = 1.01;
@@ -231,13 +235,13 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			// viewing light directly, or seeing light source through aiming cueball glass
 			if (bounces == 0 || (previousIntersecType == REFR && diffuseCount == 0)) 
 			{
-				accumCol = mask * clamp(intersec.emission, 0.0, 5.0);
+				accumCol = mask * clamp(hitEmission, 0.0, 5.0);
 				break;
 			}
 	
 			if (bounceIsSpecular || sampleLight) 
 			{
-				accumCol = mask * intersec.emission;
+				accumCol = mask * hitEmission;
 				break;
 			}
 				
@@ -251,18 +255,19 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			break;
 
 		    
-                if (intersec.type == DIFF) // Ideal DIFFUSE reflection
+                if (hitType == DIFF) // Ideal DIFFUSE reflection
 		{
 			diffuseCount++;
 
-			mask *= intersec.color;
+			mask *= hitColor;
 			
 			bounceIsSpecular = false;
 
 			if (diffuseCount == 1 && rand() < 0.5)
 			{
-				r = Ray( x, randomCosWeightedDirectionInHemisphere(nl) );
-				r.origin += nl * uEPS_intersect;
+				// choose random Diffuse sample vector
+				rayDirection = randomCosWeightedDirectionInHemisphere(nl);
+				rayOrigin = x + nl * uEPS_intersect;
 				continue;
 			}
 
@@ -277,22 +282,22 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			mask *= N_LIGHTS;
 			mask *= max(0.0, dot(nl, dirToLight)) * 0.005;
 
-			r = Ray( x, dirToLight );
-			r.origin += nl * uEPS_intersect;
+			rayDirection = dirToLight;
+			rayOrigin = x + nl * uEPS_intersect;
 
 			sampleLight = true;
 			continue;
 			
-		} // end if (intersec.type == DIFF)
+		} // end if (hitType == DIFF)
 		
 		
-		if (intersec.type == REFR)  // Ideal dielectric REFRACTION
+		if (hitType == REFR)  // Ideal dielectric REFRACTION
 		{
 			nc = 1.0; // IOR of Air
 			nt = 1.3; // IOR of special Glass aiming cueball for this game
 
 			// use 'nl' instead of 'n' in below function arguments for non-ray-bending clear materials
-			Re = calcFresnelReflectance(r.direction, n, nc, nt, ratioIoR);
+			Re = calcFresnelReflectance(rayDirection, n, nc, nt, ratioIoR);
 			Tr = 1.0 - Re;
 			P  = 0.25 + (0.5 * Re);
                 	RP = Re / P;
@@ -301,8 +306,8 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			if (rand() < P)
 			{
 				mask *= RP;
-				r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
-				r.origin += nl * uEPS_intersect;
+				rayDirection = reflect(rayDirection, nl); // reflect ray from surface
+				rayOrigin = x + nl * uEPS_intersect;
 				continue;
 			}
 
@@ -310,26 +315,26 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			if (diffuseCount == 0 && bounces == 1)
 				mask = uEPS_intersect == 1.0 ? vec3(6) : vec3(2); // make even brighter on mobile
 
-			mask *= intersec.color;
+			mask *= hitColor;
 			mask *= TP;
 
 			// transmit ray through surface
-			tdir = normalize(r.direction); // this lets the viewing ray pass through without bending due to refraction
-			r = Ray(x, tdir);
-			r.origin -= nl * uEPS_intersect;
+			tdir = normalize(rayDirection); // this lets the viewing ray pass through without bending due to refraction
+			rayDirection = tdir;
+			rayOrigin = x - nl * uEPS_intersect;
 
 			continue;
 			
-		} // end if (intersec.type == REFR)
+		} // end if (hitType == REFR)
 
 		
-		if (intersec.type == COAT)  // Diffuse object underneath with ClearCoat on top
+		if (hitType == COAT)  // Diffuse object underneath with ClearCoat on top
 		{
 			coatTypeIntersected = true;
 
 			nc = 1.0; // IOR of Air
 			nt = 1.8; // IOR of very thick ClearCoat for pool balls
-			Re = calcFresnelReflectance(r.direction, nl, nc, nt, ratioIoR);
+			Re = calcFresnelReflectance(rayDirection, nl, nc, nt, ratioIoR);
 			Tr = 1.0 - Re;
 			P  = 0.25 + (0.5 * Re);
                 	RP = Re / P;
@@ -338,23 +343,23 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			if (rand() < P)
 			{
 				mask *= RP;
-				r = Ray( x, reflect(r.direction, nl) ); // reflect ray from surface
-				r.origin += nl * uEPS_intersect;
+				rayDirection = reflect(rayDirection, nl); // reflect ray from surface
+				rayOrigin = x + nl * uEPS_intersect;
 				continue;
 			}
 
 			diffuseCount++;
 
 			mask *= TP;
-			mask *= intersec.color;
+			mask *= hitColor;
 			
 			bounceIsSpecular = false;
 
 			if (diffuseCount == 1 && rand() < 0.1)
 			{
 				// choose random Diffuse sample vector
-				r = Ray( x, randomCosWeightedDirectionInHemisphere(nl) );
-				r.origin += nl * uEPS_intersect;
+				rayDirection = randomCosWeightedDirectionInHemisphere(nl);
+				rayOrigin = x + nl * uEPS_intersect;
 				continue;
 			}
 
@@ -369,19 +374,19 @@ vec3 CalculateRadiance( Ray r, out vec3 objectNormal, out vec3 objectColor, out 
 			mask *= N_LIGHTS;
 			mask *= max(0.0, dot(nl, dirToLight)) * 0.01;
 			
-			r = Ray( x, dirToLight );
-			r.origin += nl * uEPS_intersect;
+			rayDirection = dirToLight;
+			rayOrigin = x + nl * uEPS_intersect;
 
 			sampleLight = true;
 			continue;
                         
-		} //end if (intersec.type == COAT)
+		} //end if (hitType == COAT)
 		
 	} // end for (int bounces = 0; bounces < 4; bounces++)
 	
 	return max(vec3(0), accumCol);
 
-} // end vec3 CalculateRadiance(Ray r)
+} // end vec3 CalculateRadiance( out vec3 objectNormal, out vec3 objectColor, out float objectID, out float pixelSharpness )
 
 
 //-----------------------------------------------------------------------
@@ -448,7 +453,9 @@ void main( void )
 	// point on aperture to focal point
 	vec3 finalRayDir = normalize(focalPoint - randomAperturePos);
 	
-	Ray ray = Ray( cameraPosition + randomAperturePos , finalRayDir );
+	rayOrigin = cameraPosition + randomAperturePos;
+	rayDirection = finalRayDir;
+
 	SetupScene();
 	
 	// Edge Detection - don't want to blur edges where either surface normals change abruptly (i.e. room wall corners), objects overlap each other (i.e. edge of a foreground sphere in front of another sphere right behind it),
@@ -458,7 +465,7 @@ void main( void )
 	float pixelSharpness = 0.0;
 	
 	// perform path tracing and get resulting pixel color
-	vec4 currentPixel = vec4( vec3(CalculateRadiance(ray, objectNormal, objectColor, objectID, pixelSharpness)), 0.0 );
+	vec4 currentPixel = vec4( vec3(CalculateRadiance(objectNormal, objectColor, objectID, pixelSharpness)), 0.0 );
 
 	// if difference between normals of neighboring pixels is less than the first edge0 threshold, the white edge line effect is considered off (0.0)
 	float edge0 = 0.2; // edge0 is the minimum difference required between normals of neighboring pixels to start becoming a white edge line
