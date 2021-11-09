@@ -11,10 +11,6 @@ uniform float uApertureSize;
 uniform float uFocusDistance;
 uniform float uSamplesPerFrame;
 uniform float uFrameBlendingAmount;
-// uniform float uColorEdgeSharpeningRate;
-// uniform float uNormalEdgeSharpeningRate;
-// uniform float uObjectEdgeSharpeningRate;
-uniform float uSunAngularDiameterCos;
 uniform vec2 uResolution;
 uniform vec2 uRandomVec2;
 uniform mat4 uCameraMatrix;
@@ -76,7 +72,7 @@ THREE.ShaderChunk[ 'pathtracing_skymodel_defines' ] = `
 #define UP_VECTOR vec3(0.0, 1.0, 0.0)
 #define SUN_POWER 1000.0
 // 66 arc seconds -> degrees, and the cosine of that
-//#define SUN_ANGULAR_DIAMETER_COS 0.9998 //0.9999566769
+#define SUN_ANGULAR_DIAMETER_COS 0.9998 //0.9999566769
 #define CUTOFF_ANGLE 1.6110731556870734
 #define STEEPNESS 1.5
 `;
@@ -84,13 +80,13 @@ THREE.ShaderChunk[ 'pathtracing_skymodel_defines' ] = `
 
 THREE.ShaderChunk[ 'pathtracing_plane_intersect' ] = `
 //-----------------------------------------------------------------------
-float PlaneIntersect( vec4 pla, Ray r )
+float PlaneIntersect( vec4 pla, vec3 rayOrigin, vec3 rayDirection )
 //-----------------------------------------------------------------------
 {
 	vec3 n = pla.xyz;
-	float denom = dot(n, r.direction);
+	float denom = dot(n, rayDirection);
 	
-        vec3 pOrO = (pla.w * n) - r.origin; 
+        vec3 pOrO = (pla.w * n) - rayOrigin; 
         float result = dot(pOrO, n) / denom;
 	return (result > 0.0) ? result : INFINITY;
 }
@@ -135,39 +131,33 @@ float DiskIntersect( float radius, vec3 pos, vec3 normal, vec3 rayOrigin, vec3 r
 `;
 
 THREE.ShaderChunk[ 'pathtracing_rectangle_intersect' ] = `
-//------------------------------------------------------------------------------------
-float RectangleIntersect( vec3 pos, vec3 normal, float radiusU, float radiusV, Ray r )
-//------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------
+float RectangleIntersect( vec3 pos, vec3 normal, float radiusU, float radiusV, vec3 rayOrigin, vec3 rayDirection )
+//----------------------------------------------------------------------------------------------------------------
 {
-	float dt = dot(-normal, r.direction);
+	float dt = dot(-normal, rayDirection);
 	// use the following for one-sided rectangle
 	if (dt < 0.0) return INFINITY;
-	float t = dot(-normal, pos - r.origin) / dt;
+	float t = dot(-normal, pos - rayOrigin) / dt;
 	if (t < 0.0) return INFINITY;
 	
-	vec3 hit = r.origin + r.direction * t;
+	vec3 hit = rayOrigin + rayDirection * t;
 	vec3 vi = hit - pos;
-	// from "Building an Orthonormal Basis, Revisited" http://jcgt.org/published/0006/01/01/
-	// float signf = normal.z >= 0.0 ? 1.0 : -1.0;
-	// float a = -1.0 / (signf + normal.z);
-	// float b = normal.x * normal.y * a;
-	// vec3 T = vec3( 1.0 + signf * normal.x * normal.x * a, signf * b, -signf * normal.x );
-	// vec3 B = vec3( b, signf + normal.y * normal.y * a, -normal.y );
 	vec3 U = normalize( cross(vec3(0.7071067811865475, 0.7071067811865475, 0), normal ) );
 	vec3 V = cross(normal, U);
-	return (abs(dot(V, vi)) > radiusU || abs(dot(U, vi)) > radiusV) ? INFINITY : t;
+	return (abs(dot(U, vi)) > radiusU || abs(dot(V, vi)) > radiusV) ? INFINITY : t;
 }
 `;
 
 THREE.ShaderChunk[ 'pathtracing_slab_intersect' ] = `
-//--------------------------------------------------------------------------------------
-float SlabIntersect( float radius, vec3 normal, Ray r, out vec3 n )
-//--------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------
+float SlabIntersect( float radius, vec3 normal, vec3 rayOrigin, vec3 rayDirection, out vec3 n )
+//---------------------------------------------------------------------------------------------
 {
-	n = dot(normal, r.direction) < 0.0 ? normal : -normal;
-	float rad = dot(r.origin, n) > radius ? radius : -radius; 
-	float denom = dot(n, r.direction);
-	vec3 pOrO = (rad * n) - r.origin; 
+	n = dot(normal, rayDirection) < 0.0 ? normal : -normal;
+	float rad = dot(rayOrigin, n) > radius ? radius : -radius; 
+	float denom = dot(n, rayDirection);
+	vec3 pOrO = (rad * n) - rayOrigin; 
 	float t = dot(pOrO, n) / denom;
 	return t > 0.0 ? t : INFINITY;
 }
@@ -1715,18 +1705,18 @@ float OpenCylinderIntersect( vec3 p0, vec3 p1, float rad, vec3 rayOrigin, vec3 r
 `;
 
 THREE.ShaderChunk[ 'pathtracing_cappedcylinder_intersect' ] = `
-//-----------------------------------------------------------------------------
-float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
-//-----------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------
+float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, vec3 rayOrigin, vec3 rayDirection, out vec3 n )
+//---------------------------------------------------------------------------------------------------------
 {
 	float r2=rad*rad;
 	
 	vec3 dp=p1-p0;
 	vec3 dpt=dp/dot(dp,dp);
 	
-	vec3 ao=r.origin-p0;
+	vec3 ao=rayOrigin-p0;
 	vec3 aoxab=cross(ao,dpt);
-	vec3 vxab=cross(r.direction,dpt);
+	vec3 vxab=cross(rayDirection,dpt);
 	float ab2=dot(dpt,dpt);
 	float a=2.0*dot(vxab,vxab);
 	float ra=1.0/a;
@@ -1751,12 +1741,12 @@ float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 	// Cylinder caps
 	// disk0
 	vec3 diskNormal = normalize(dp);
-	float denom = dot(diskNormal, r.direction);
-	vec3 pOrO = p0 - r.origin;
+	float denom = dot(diskNormal, rayDirection);
+	vec3 pOrO = p0 - rayOrigin;
 	float tDisk0 = dot(pOrO, diskNormal) / denom;
 	if (tDisk0 > 0.0)
 	{
-		vec3 intersectPos = r.origin + r.direction * tDisk0;
+		vec3 intersectPos = rayOrigin + rayDirection * tDisk0;
 		vec3 v = intersectPos - p0;
 		float d2 = dot(v,v);
 		if (d2 <= r2)
@@ -1767,12 +1757,12 @@ float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 	}
 	
 	// disk1
-	denom = dot(diskNormal, r.direction);
-	pOrO = p1 - r.origin;
+	denom = dot(diskNormal, rayDirection);
+	pOrO = p1 - rayOrigin;
 	float tDisk1 = dot(pOrO, diskNormal) / denom;
 	if (tDisk1 > 0.0)
 	{
-		vec3 intersectPos = r.origin + r.direction * tDisk1;
+		vec3 intersectPos = rayOrigin + rayDirection * tDisk1;
 		vec3 v = intersectPos - p1;
 		float d2 = dot(v,v);
 		if (d2 <= r2 && tDisk1 < result)
@@ -1785,7 +1775,7 @@ float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 	// Cylinder body
 	if (t1 > 0.0)
 	{
-		ip=r.origin+r.direction*t1;
+		ip=rayOrigin+rayDirection*t1;
 		lp=ip-p0;
 		ct=dot(lp,dpt);
 		if(ct>0.0 && ct<1.0 && t1<result)
@@ -1797,7 +1787,7 @@ float CappedCylinderIntersect( vec3 p0, vec3 p1, float rad, Ray r, out vec3 n )
 	
 	if (t0 > 0.0)
 	{
-		ip=r.origin+r.direction*t0;
+		ip=rayOrigin+rayDirection*t0;
 		lp=ip-p0;
 		ct=dot(lp,dpt);
 		if(ct>0.0 && ct<1.0 && t0<result)
@@ -1904,9 +1894,9 @@ float ConeIntersect( vec3 p0, float r0, vec3 p1, float r1, vec3 rayOrigin, vec3 
 
 
 THREE.ShaderChunk[ 'pathtracing_capsule_intersect' ] = `
-//-------------------------------------------------------------------------------
-float CapsuleIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n )
-//-------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------
+float CapsuleIntersect( vec3 p0, float r0, vec3 p1, float r1, vec3 rayOrigin, vec3 rayDirection, out vec3 n )
+//-----------------------------------------------------------------------------------------------------------
 {
 	/*
 	// used for ConeIntersect below, if different radius sphere end-caps are desired
@@ -1928,24 +1918,24 @@ float CapsuleIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n 
 	float t1;
 	vec3 uv1;
 	vec3 n1;
-	//t1 = ConeIntersect(coneP0,cr0,coneP1,cr1,r,n1);
-	t1 = OpenCylinderIntersect(p0,p1,r0,r,n1);
+	//t1 = ConeIntersect(coneP0,cr0,coneP1,cr1,rayOrigin, rayDirection,n1);
+	t1 = OpenCylinderIntersect(p0,p1,r0,rayOrigin, rayDirection,n1);
 	if(t1<t0)
 	{
 		t0=t1;
 		n=n1;
 	}
-	t1 = SphereIntersect(r0,p0,r);
+	t1 = SphereIntersect(r0,p0,rayOrigin, rayDirection);
 	if(t1<t0)
 	{
 		t0=t1;
-		n=(r.origin + r.direction * t1) - p0;
+		n=(rayOrigin + rayDirection * t1) - p0;
 	}
-	t1 = SphereIntersect(r1,p1,r);
+	t1 = SphereIntersect(r1,p1,rayOrigin, rayDirection);
 	if(t1<t0)
 	{
 		t0=t1;
-		n=(r.origin + r.direction * t1) - p1;
+		n=(rayOrigin + rayDirection * t1) - p1;
 	}
 	    
 	return t0;
@@ -1953,12 +1943,12 @@ float CapsuleIntersect( vec3 p0, float r0, vec3 p1, float r1, Ray r, out vec3 n 
 `;
 
 THREE.ShaderChunk[ 'pathtracing_paraboloid_intersect' ] = `
-//------------------------------------------------------------------------------
-float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
-//------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------------------------
+float ParaboloidIntersect( float rad, float height, vec3 pos, vec3 rayOrigin, vec3 rayDirection, out vec3 n )
+//-----------------------------------------------------------------------------------------------------------
 {
-	vec3 rd = r.direction;
-	vec3 ro = r.origin - pos;
+	vec3 rd = rayDirection;
+	vec3 ro = rayOrigin - pos;
 	float k = height / (rad * rad);
 	
 	// quadratic equation coefficients
@@ -1997,12 +1987,12 @@ float ParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n 
 `;
 
 THREE.ShaderChunk[ 'pathtracing_hyperboloid_intersect' ] = `
-//-------------------------------------------------------------------------------
-float HyperboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
-//-------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------
+float HyperboloidIntersect( float rad, float height, vec3 pos, vec3 rayOrigin, vec3 rayDirection, out vec3 n )
+//------------------------------------------------------------------------------------------------------------
 {
-	vec3 rd = r.direction;
-	vec3 ro = r.origin - pos;
+	vec3 rd = rayDirection;
+	vec3 ro = rayOrigin - pos;
 	float k = height / (rad * rad);
 	
 	// quadratic equation coefficients
@@ -2041,12 +2031,12 @@ float HyperboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n
 `;
 
 THREE.ShaderChunk[ 'pathtracing_hyperbolic_paraboloid_intersect' ] = `
-//-----------------------------------------------------------------------------------------
-float HyperbolicParaboloidIntersect( float rad, float height, vec3 pos, Ray r, out vec3 n )
-//-----------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+float HyperbolicParaboloidIntersect( float rad, float height, vec3 pos, vec3 rayOrigin, vec3 rayDirection, out vec3 n )
+//---------------------------------------------------------------------------------------------------------------------
 {
-	vec3 rd = r.direction;
-	vec3 ro = r.origin - pos;
+	vec3 rd = rayDirection;
+	vec3 ro = rayOrigin - pos;
 	float k = height / (rad * rad);
 	
 	// quadratic equation coefficients
@@ -2100,21 +2090,21 @@ vec3 calcNormal_Torus( in vec3 pos )
 /* 
 Thanks to koiava for the ray marching strategy! https://www.shadertoy.com/user/koiava 
 */
-float TorusIntersect( float rad0, float rad1, Ray r )
+float TorusIntersect( float rad0, float rad1, vec3 rayOrigin, vec3 rayDirection )
 {	
 	vec3 n;
-	float d = CappedCylinderIntersect( vec3(0,rad1,0), vec3(0,-rad1,0), rad0+rad1, r, n );
+	float d = CappedCylinderIntersect( vec3(0,rad1,0), vec3(0,-rad1,0), rad0+rad1, rayOrigin, rayDirection, n );
 	if (d == INFINITY)
 		return INFINITY;
 	
-	vec3 pos = r.origin;
+	vec3 pos = rayOrigin;
 	float t = 0.0;
 	float torusFar = d + (rad0 * 2.0) + (rad1 * 2.0);
 	for (int i = 0; i < 200; i++)
 	{
 		d = map_Torus(pos);
 		if (d < 0.001 || t > torusFar) break;
-		pos += r.direction * d;
+		pos += rayDirection * d;
 		t += d;
 	}
 	
@@ -2122,12 +2112,12 @@ float TorusIntersect( float rad0, float rad1, Ray r )
 }
 /*
 // borrowed from iq: https://www.shadertoy.com/view/4sBGDy
-//-----------------------------------------------------------------------
-float TorusIntersect( float rad0, float rad1, vec3 pos, Ray ray )
-//-----------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------
+float TorusIntersect( float rad0, float rad1, vec3 pos, vec3 rayOrigin, vec3 rayDirection )
+//-----------------------------------------------------------------------------------------
 {
-	vec3 rO = ray.origin - pos;
-	vec3 rD = ray.direction;
+	vec3 rO = rayOrigin - pos;
+	vec3 rD = rayDirection;
 	
 	float Ra2 = rad0*rad0;
 	float ra2 = rad1*rad1;
@@ -2341,14 +2331,14 @@ float SunIntensity(float zenithAngleCos)
 	zenithAngleCos = clamp( zenithAngleCos, -1.0, 1.0 );
 	return SUN_POWER * max( 0.0, 1.0 - pow( E, -( ( CUTOFF_ANGLE - acos( zenithAngleCos ) ) / STEEPNESS ) ) );
 }
-vec3 Get_Sky_Color(Ray r, vec3 sunDirection)
+vec3 Get_Sky_Color(vec3 rayDir)
 {
-	vec3 viewDirection = normalize(r.direction);
+	vec3 viewDirection = normalize(rayDir);
 	
 	/* most of the following code is borrowed from the three.js shader file: SkyShader.js */
     	// Cosine angles
-	float cosViewSunAngle = dot(viewDirection, normalize(sunDirection));
-    	float cosSunUpAngle = dot(UP_VECTOR, normalize(sunDirection)); // allowed to be negative: + is daytime, - is nighttime
+	float cosViewSunAngle = dot(viewDirection, uSunDirection);
+    	float cosSunUpAngle = dot(UP_VECTOR, uSunDirection); // allowed to be negative: + is daytime, - is nighttime
     	float cosUpViewAngle = dot(UP_VECTOR, viewDirection);
 	
         // Get sun intensity based on how high in the sky it is
@@ -2380,10 +2370,10 @@ vec3 Get_Sky_Color(Ray r, vec3 sunDirection)
 	vec2 uv = vec2( phi, theta ) / vec2( 2.0 * PI, PI ) + vec2( 0.5, 0.0 );
 	vec3 L0 = vec3( 0.1 ) * Fex;
 	// composition + solar disc
-	float sundisk = smoothstep( uSunAngularDiameterCos, uSunAngularDiameterCos + 0.00002, cosViewSunAngle );
+	float sundisk = smoothstep( SUN_ANGULAR_DIAMETER_COS, SUN_ANGULAR_DIAMETER_COS + 0.00002, cosViewSunAngle );
 	L0 += ( sunE * 19000.0 * Fex ) * sundisk;
 	vec3 texColor = ( Lin + L0 ) * 0.04 + vec3( 0.0, 0.0003, 0.00075 );
-	float sunfade = 1.0 - clamp( 1.0 - exp( ( sunDirection.y / 450000.0 ) ), 0.0, 1.0 );
+	float sunfade = 1.0 - clamp( 1.0 - exp( ( uSunDirection.y / 450000.0 ) ), 0.0, 1.0 );
 	vec3 retColor = pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * sunfade ) ) ) );
 	return retColor;
 }
@@ -2619,7 +2609,7 @@ void main( void )
 	float pixelSharpness = 0.0;
 
 	// perform path tracing and get resulting pixel color
-	vec4 currentPixel = vec4( vec3(CalculateRadiance(rayOrigin, rayDirection, objectNormal, objectColor, objectID, pixelSharpness)), 0.0 );
+	vec4 currentPixel = vec4( vec3(CalculateRadiance(objectNormal, objectColor, objectID, pixelSharpness)), 0.0 );
 	
 	// if difference between normals of neighboring pixels is less than the first edge0 threshold, the white edge line effect is considered off (0.0)
 	float edge0 = 0.2; // edge0 is the minimum difference required between normals of neighboring pixels to start becoming a white edge line
