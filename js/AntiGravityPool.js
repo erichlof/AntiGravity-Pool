@@ -992,5 +992,14 @@ function updateVariablesAndUniforms()
 } // end function updateVariablesAndUniforms()
 
 
+// begin Web Audio user-interaction requirement for MacOS & iOS
+const startButton = document.getElementById('startButton');
+startButton.addEventListener('click', beginInit);
 
-init(); // init app and start animating
+function beginInit()
+{
+        const overlay = document.getElementById('overlay');
+        overlay.remove();
+        init(); // init app and start animating
+}
+// end Web Audio user-interaction requirement for MacOS & iOS
