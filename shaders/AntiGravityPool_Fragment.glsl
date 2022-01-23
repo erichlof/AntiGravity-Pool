@@ -70,7 +70,7 @@ float BoxInteriorIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3
 
 
 //---------------------------------------------------------------------------------------
-float SceneIntersect( )
+float SceneIntersect()
 //---------------------------------------------------------------------------------------
 {
 	float d = INFINITY;
@@ -172,7 +172,7 @@ float SceneIntersect( )
 
 
 //-----------------------------------------------------------------------------------------------------------------------------
-vec3 CalculateRadiance( out vec3 objectNormal, out vec3 objectColor, out float objectID, out float pixelSharpness )
+vec3 CalculateRadiance(out vec3 objectNormal, out vec3 objectColor, out float objectID, out float pixelSharpness )
 //-----------------------------------------------------------------------------------------------------------------------------
 {
 	Sphere lightChoice;
@@ -265,6 +265,7 @@ vec3 CalculateRadiance( out vec3 objectNormal, out vec3 objectColor, out float o
 
 			if (diffuseCount == 1 && rand() < 0.5)
 			{
+				mask *= 2.0;
 				// choose random Diffuse sample vector
 				rayDirection = randomCosWeightedDirectionInHemisphere(nl);
 				rayOrigin = x + nl * uEPS_intersect;
@@ -279,6 +280,7 @@ vec3 CalculateRadiance( out vec3 objectNormal, out vec3 objectColor, out float o
 			lightChoice = spheres[intBest];
 
 			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.13);
+			mask *= diffuseCount == 1 ? 2.0 : 1.0;
 			mask *= N_LIGHTS;
 			mask *= max(0.0, dot(nl, dirToLight)) * 0.005;
 
@@ -355,13 +357,14 @@ vec3 CalculateRadiance( out vec3 objectNormal, out vec3 objectColor, out float o
 			
 			bounceIsSpecular = false;
 
-			if (diffuseCount == 1 && rand() < 0.1)
-			{
-				// choose random Diffuse sample vector
-				rayDirection = randomCosWeightedDirectionInHemisphere(nl);
-				rayOrigin = x + nl * uEPS_intersect;
-				continue;
-			}
+			// if (diffuseCount == 1 && rand() < 0.5)
+			// {
+			// 	mask *= 2.0;
+			// 	// choose random Diffuse sample vector
+			// 	rayDirection = randomCosWeightedDirectionInHemisphere(nl);
+			// 	rayOrigin = x + nl * uEPS_intersect;
+			// 	continue;
+			// }
 
 			// loop through the 8 sphere lights and find the best one to sample
 			for (int i = 0; i < N_SPHERES; i++)
@@ -371,8 +374,9 @@ vec3 CalculateRadiance( out vec3 objectNormal, out vec3 objectColor, out float o
 			lightChoice = spheres[intBest];
 
 			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.2);
+			
 			mask *= N_LIGHTS;
-			mask *= max(0.0, dot(nl, dirToLight)) * 0.01;
+			mask *= max(0.0, dot(nl, dirToLight)) * 0.03;//0.01;
 			
 			rayDirection = dirToLight;
 			rayOrigin = x + nl * uEPS_intersect;
@@ -394,7 +398,7 @@ void SetupScene(void)
 //-----------------------------------------------------------------------
 {
 	vec3 z = vec3(0);
-	vec3 L = vec3(1, 1, 1) * 30.0; // bright White light
+	vec3 L = vec3(1, 1, 1) * 10.0;//30.0; // bright White light
 	
         spheres[0] = Sphere(10.0, uBallPositions[16], L, z, LIGHT); // bottom left front spherical light
 	spheres[1] = Sphere(10.0, uBallPositions[17], L, z, LIGHT); // bottom right front spherical light
