@@ -262,10 +262,10 @@ void main()
         } // end if (centerPixel.a > 0.0)
 
 
-        if ((centerPixel.a == 1.01 && uOneOverSampleCounter < 0.005) || uOneOverSampleCounter < 0.0002)
-        {
-                filteredPixelColor = centerPixel.rgb;
-        }
+        if (centerPixel.a == 1.01)
+	{
+		filteredPixelColor = mix(filteredPixelColor, centerPixel.rgb, 0.5);
+	}
 
 
         // final filteredPixelColor processing ////////////////////////////////////
