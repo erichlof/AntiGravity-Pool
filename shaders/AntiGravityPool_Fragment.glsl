@@ -508,6 +508,14 @@ void main( void )
 		currentPixel.rgb *= 0.1; // brightness of new image (noisy)
 	}
 
+	// if current raytraced pixel didn't return any color value, just use the previous frame's pixel color
+	if (currentPixel.rgb == vec3(0.0))
+	{
+		currentPixel.rgb = previousPixel.rgb;
+		previousPixel.rgb *= 0.5;
+		currentPixel.rgb *= 0.5;
+	}
+
 	currentPixel.a = 0.0;
 	// if (normalDifference >= 1.0 && pixelSharpness == 0.0 && colorDifference == 0.0 && objectDifference == 0.0)
 	// 	pixelSharpness = 1.01;
@@ -517,8 +525,8 @@ void main( void )
 	if (previousPixel.a == 1.01)
 		currentPixel.a = 1.01;
 	// for dynamic scenes
-	// if (previousPixel.a == 1.01 && rng() < 0.05)
-	// 	currentPixel.a = 1.0;
+	if (previousPixel.a == 1.01 && rng() < 0.05)
+		currentPixel.a = 1.0;
 	if (previousPixel.a == -1.0)
 		currentPixel.a = 0.0;
 
