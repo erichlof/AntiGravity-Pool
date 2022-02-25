@@ -262,17 +262,11 @@ void main()
 	} // end if (centerPixel.a > 0.0)
 
 
-	// gets rid of jagged edges between surface areas of differing colors,
-	// and gives crisper edges/boundries to area light sources (spheres, quads, etc.)
-	if (centerPixel.a == 1.01)
+	// gives sharper edges between surface areas of differing colors,
+	// and to edges/boundries of area light sources (spheres, quads, etc.)
+	if (centerPixel.a == 1.01) 
 	{
-		filteredPixelColor = uSceneIsDynamic ? mix(centerPixel.rgb, filteredPixelColor, 0.5) : 
-					mix(centerPixel.rgb, filteredPixelColor, uOneOverSampleCounter);
-	}
-
-	if ((centerPixel.a == 1.01 && uOneOverSampleCounter < 0.005) || uOneOverSampleCounter < 0.0002)
-	{
-		filteredPixelColor = centerPixel.rgb;
+		filteredPixelColor = mix(centerPixel.rgb, filteredPixelColor, 0.75);
 	}
 
 
