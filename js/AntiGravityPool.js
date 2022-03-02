@@ -1,65 +1,65 @@
 // game-specific variables go here
-var initialCameraZ;
-var cameraZOffset = 0;
-var poolTableWalls = [];
-var ballObjects = [];
-var ballPositions = [];
-var pocketSounds = [];
-var railWallSounds = [];
-var ballClickSounds = [];
-var cueStickSound = null;
-var chalkSound = null;
-var rackSound = null;
-var sphereSize = 2;
-var pocketSize = 10;
-var pocketPosX = 52;
-var pocketPosY = 52;
-var pocketPosZ = 52;
-var sphereDensity = 1.0;
-var light0, light1;
-var aimOrigin = new THREE.Vector3();
-var aimVector = new THREE.Vector3();
-var frictionVector = new THREE.Vector3();
-var sml = 2.2;
-var lrg = sml * 2;
-var rnd0, rnd1, rnd2;
-var range = 0.5;
-var x, y, z;
-var shotIsInProgress = false;
-var allBallsHaveStopped = true;
-var playerIsAiming = true;
-var launchGhostAimingBall = false;
-var canLaunchGhostAimingBall = false;
-var playerOneTurn = true;
-var playerTwoTurn = false;
-var willBePlayerOneTurn = false;
-var willBePlayerTwoTurn = false;
-var playerOneColor = 'undecided';
-var playerTwoColor = 'undecided';
-var redBallsRemaining = 7;
-var yellowBallsRemaining = 7;
-var playerOneCanShootBlackBall = false;
-var playerTwoCanShootBlackBall = false;
-var spotCueBall = false;
-var spotBlackBall = false;
-var playerOneWins = false;
-var playerTwoWins = false;
-var shouldStartNewGame = false;
-var isBreakShot = true;
-var canPlayBallSounds = false;
-var isShooting = false;
-var canPressSpacebar = false;
-var minShotPower = 0.2;
-var shotPower = minShotPower;
-var shotFlip = 1;
+let initialCameraZ;
+let cameraZOffset = 0;
+let poolTableWalls = [];
+let ballObjects = [];
+let ballPositions = [];
+let pocketSounds = [];
+let railWallSounds = [];
+let ballClickSounds = [];
+let cueStickSound = null;
+let chalkSound = null;
+let rackSound = null;
+let sphereSize = 2;
+let pocketSize = 10;
+let pocketPosX = 52;
+let pocketPosY = 52;
+let pocketPosZ = 52;
+let sphereDensity = 1.0;
+let light0, light1;
+let aimOrigin = new THREE.Vector3();
+let aimVector = new THREE.Vector3();
+let frictionVector = new THREE.Vector3();
+let sml = 2.2;
+let lrg = sml * 2;
+let rnd0, rnd1, rnd2;
+let range = 0.5;
+let x, y, z;
+let shotIsInProgress = false;
+let allBallsHaveStopped = true;
+let playerIsAiming = true;
+let launchGhostAimingBall = false;
+let canLaunchGhostAimingBall = false;
+let playerOneTurn = true;
+let playerTwoTurn = false;
+let willBePlayerOneTurn = false;
+let willBePlayerTwoTurn = false;
+let playerOneColor = 'undecided';
+let playerTwoColor = 'undecided';
+let redBallsRemaining = 7;
+let yellowBallsRemaining = 7;
+let playerOneCanShootBlackBall = false;
+let playerTwoCanShootBlackBall = false;
+let spotCueBall = false;
+let spotBlackBall = false;
+let playerOneWins = false;
+let playerTwoWins = false;
+let shouldStartNewGame = false;
+let isBreakShot = true;
+let canPlayBallSounds = false;
+let isShooting = false;
+let canPressSpacebar = false;
+let minShotPower = 0.2;
+let shotPower = minShotPower;
+let shotFlip = 1;
 
 // oimo physics variables
-var world = null;
-var rigidBodies = [];
+let world = null;
+let rigidBodies = [];
 
 // WebAudio variables
-var audioLoader;
-var listener;
+let audioLoader;
+let listener;
 
 
 // overwrite onMouseWheel function
@@ -75,10 +75,13 @@ function onMouseWheel(event)
 }
 
 
-// called automatically from within initTHREEjs() function
+// called automatically from within initTHREEjs() function (located in InitCommon.js file)
 function initSceneData() 
 {        
-	// game-specific three.js variables / Oimo.js physics setup goes here
+
+	demoFragmentShaderFileName = 'AntiGravityPool_Fragment.glsl';
+
+	// game-specific settings and three.js variables / Oimo.js physics setup goes here
 	sceneIsDynamic = true;
 	cameraFlightSpeed = 30;
 	
@@ -165,66 +168,16 @@ function initSceneData()
 		rackSound.setVolume(0.2);
 		worldCamera.add(rackSound);
 	} );
+
+	// app/game-specific uniforms go here
+	pathTracingUniforms.uShotIsInProgress = { type: "b1", value: false };
+	pathTracingUniforms.uBallPositions = { type: "v3v", value: ballPositions };
 	
 	
 	startNewGame();
 
 } // end function initSceneData()
 
-
-
-	
-
-
-// called automatically from within initTHREEjs() function
-function initPathTracingShaders() 
-{
-	// app/game-specific uniforms go here
-	pathTracingUniforms.uShotIsInProgress = { type: "b1", value: false };
-	pathTracingUniforms.uBallPositions = { type: "v3v", value: ballPositions };
-
-	pathTracingDefines = 
-	{
-		//NUMBER_OF_TRIANGLES: total_number_of_triangles
-	};
-
-	// load vertex and fragment shader files that are used in the pathTracing material, mesh and scene
-	fileLoader.load('shaders/common_PathTracing_Vertex.glsl', function (shaderText) 
-	{
-		pathTracingVertexShader = shaderText;
-
-		createPathTracingMaterial();
-	});
-
-} // end function initPathTracingShaders()
-
-
-// called automatically from within initPathTracingShaders() function above
-function createPathTracingMaterial() 
-{
-	fileLoader.load('shaders/AntiGravityPool_Fragment.glsl', function (shaderText) 
-	{        
-		pathTracingFragmentShader = shaderText;
-
-		pathTracingMaterial = new THREE.ShaderMaterial({
-			uniforms: pathTracingUniforms,
-			defines: pathTracingDefines,
-			vertexShader: pathTracingVertexShader,
-			fragmentShader: pathTracingFragmentShader,
-			depthTest: false,
-			depthWrite: false
-		});
-
-		pathTracingMesh = new THREE.Mesh(pathTracingGeometry, pathTracingMaterial);
-		pathTracingScene.add(pathTracingMesh);
-
-		// the following keeps the large scene ShaderMaterial quad right in front 
-		//   of the camera at all times. This is necessary because without it, the scene 
-		//   quad will fall out of view and get clipped when the camera rotates past 180 degrees.
-		worldCamera.add(pathTracingMesh);    
-	});
-
-} // end function createPathTracingMaterial()
 
 
 
@@ -759,7 +712,7 @@ function doGameStateLogic(ballPocketed)
 
 
 
-// called automatically from within the animate() function
+// called automatically from within the animate() function (located in InitCommon.js file)
 function updateVariablesAndUniforms() 
 {
 	
