@@ -82,7 +82,7 @@ float SceneIntersect()
 	if (d < t)
 	{
 		t = d;
-		hitNormal = normalize(n);
+		hitNormal = n;
 		hitEmission = boxes[0].emission;
 		hitColor = boxes[0].color;
 		hitType = boxes[0].type;
@@ -95,7 +95,7 @@ float SceneIntersect()
 	if (d < t)
 	{
 		t = d;
-		hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[0]);
+		hitNormal = (rayOrigin + rayDirection * t) - uBallPositions[0];
 		hitEmission = vec3(0);
 		//hitColor = uShotIsInProgress ? vec3(1) : vec3(2);
 		hitColor = vec3(1);
@@ -109,7 +109,7 @@ float SceneIntersect()
 	if (d < t)
 	{
 		t = d;
-		hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[1]);
+		hitNormal = (rayOrigin + rayDirection * t) - uBallPositions[1];
 		hitEmission = vec3(0);
 		hitColor = vec3(0.005);
 		hitType = COAT;
@@ -124,7 +124,7 @@ float SceneIntersect()
 		if (d < t)
 		{
 			t = d;
-			hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[i]);
+			hitNormal = (rayOrigin + rayDirection * t) - uBallPositions[i];
 			hitEmission = vec3(0);
 			hitColor = vec3(1.0, 0.0, 0.0);
 			hitType = COAT;
@@ -140,7 +140,7 @@ float SceneIntersect()
 		if (d < t)
 		{
 			t = d;
-			hitNormal = normalize((rayOrigin + rayDirection * t) - uBallPositions[i]);
+			hitNormal = (rayOrigin + rayDirection * t) - uBallPositions[i];
 			hitEmission = vec3(0);
 			hitColor = vec3(1.0, 1.0, 0.0);
 			hitType = COAT;
@@ -156,7 +156,7 @@ float SceneIntersect()
 		if (d < t)
 		{
 			t = d;
-			hitNormal = normalize((rayOrigin + rayDirection * t) - spheres[i].position);
+			hitNormal = (rayOrigin + rayDirection * t) - spheres[i].position;
 			hitEmission = spheres[i].emission;
 			hitColor = spheres[i].color;
 			hitType = spheres[i].type;
@@ -211,7 +211,7 @@ vec3 CalculateRadiance(out vec3 objectNormal, out vec3 objectColor, out float ob
 
 		// useful data 
 		n = normalize(hitNormal);
-                nl = dot(n, rayDirection) < 0.0 ? normalize(n) : normalize(-n);
+                nl = dot(n, rayDirection) < 0.0 ? n : -n;
 		x = rayOrigin + rayDirection * t;
 
 		if (bounces == 0)
@@ -321,7 +321,7 @@ vec3 CalculateRadiance(out vec3 objectNormal, out vec3 objectColor, out float ob
 			mask *= TP;
 
 			// transmit ray through surface
-			tdir = normalize(rayDirection); // this lets the viewing ray pass through without bending due to refraction
+			tdir = rayDirection; // this lets the viewing ray pass through without bending due to refraction
 			rayDirection = tdir;
 			rayOrigin = x - nl * uEPS_intersect;
 
