@@ -86,7 +86,7 @@ function initSceneData()
 	cameraFlightSpeed = 30;
 	
 	// pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
-	pixelRatio = mouseControl ? 0.8 : 1.0;
+	pixelRatio = mouseControl ? 0.8 : 0.9;
 
 	EPS_intersect = 0.001;
 
