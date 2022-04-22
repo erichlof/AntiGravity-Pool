@@ -22,6 +22,7 @@ let sceneIsDynamic = false;
 let cameraFlightSpeed = 60;
 let cameraRotationSpeed = 1;
 let fovScale;
+let storedFOV = 0;
 let increaseFOV = false;
 let decreaseFOV = false;
 let dollyCameraIn = false;
@@ -57,6 +58,11 @@ let useGenericInput = true;
 let EPS_intersect;
 let blueNoiseTexture;
 let useToneMapping = true;
+let canPress_O = true;
+let canPress_P = true;
+let allowOrthographicCamera = true;
+let changeToOrthographicCamera = false;
+let changeToPerspectiveCamera = false;
 let pixelEdgeSharpness = 1.0;
 let edgeSharpenSpeed = 0.05;
 let filterDecaySpeed = 0.0002;
@@ -65,6 +71,8 @@ let gui;
 let ableToEngagePointerLock = true;
 let pixel_ResolutionController, pixel_ResolutionObject;
 let needChangePixelResolution = false;
+let orthographicCamera_ToggleController, orthographicCamera_ToggleObject;
+let currentlyUsingOrthographicCamera = false;
 
 // the following variables will be used to calculate rotations and directions from the camera
 let cameraDirectionVector = new THREE.Vector3(); //for moving where the camera is looking
@@ -230,27 +238,8 @@ function onWindowResize(event)
 
 function init()
 {
-	// default GUI elements for all demos
 
-	pixel_ResolutionObject = {
-		pixel_Resolution: 0.5 // will be set by each demo's js file
-	}
-
-	function handlePixelResolutionChange()
-	{
-		needChangePixelResolution = true;
-	}
-
-	// since I use the lil-gui.min.js minified version of lil-gui without modern exports, 
-	//'g()' is 'GUI()' ('g' is the shortened version of 'GUI' inside the lil-gui.min.js file)
-	gui = new g(); // same as gui = new GUI();
-
-	pixel_ResolutionController = gui.add(pixel_ResolutionObject, 'pixel_Resolution', 0.5, 1.0, 0.05).onChange(handlePixelResolutionChange);
-
-	gui.domElement.style.userSelect = "none";
-	gui.domElement.style.MozUserSelect = "none";
-
-	
+	window.addEventListener('resize', onWindowResize, false);
 
 	if ('ontouchstart' in window) 
 	{
@@ -265,8 +254,52 @@ function init()
 		});
 	}
 
+	// default GUI elements for all demos
+
+	pixel_ResolutionObject = {
+		pixel_Resolution: 0.5 // will be set by each demo's js file
+	}
+	orthographicCamera_ToggleObject = {
+		Orthographic_Camera: false
+	}
+
+	function handlePixelResolutionChange()
+	{
+		needChangePixelResolution = true;
+	}
+	function handleCameraProjectionChange()
+	{
+		if (!currentlyUsingOrthographicCamera)
+			changeToOrthographicCamera = true;
+		else if (currentlyUsingOrthographicCamera)
+			changeToPerspectiveCamera = true;
+		// toggle boolean flag
+		currentlyUsingOrthographicCamera = !currentlyUsingOrthographicCamera;
+	}
+
+	// since I use the lil-gui.min.js minified version of lil-gui without modern exports, 
+	//'g()' is 'GUI()' ('g' is the shortened version of 'GUI' inside the lil-gui.min.js file)
+	gui = new g(); // same as gui = new GUI();
+
+	pixel_ResolutionController = gui.add(pixel_ResolutionObject, 'pixel_Resolution', 0.5, 1.0, 0.05).onChange(handlePixelResolutionChange);
+	if (!mouseControl)
+		orthographicCamera_ToggleController = gui.add(orthographicCamera_ToggleObject, 'Orthographic_Camera', false).onChange(handleCameraProjectionChange);
+
+	gui.domElement.style.userSelect = "none";
+	gui.domElement.style.MozUserSelect = "none";
+
+	
 	if (mouseControl) 
 	{
+
+		gui.domElement.addEventListener("mouseenter", function (event) 
+		{
+			ableToEngagePointerLock = false;
+		}, false);
+		gui.domElement.addEventListener("mouseleave", function (event) 
+		{
+			ableToEngagePointerLock = true;
+		}, false);
 
 		window.addEventListener('wheel', onMouseWheel, false);
 
@@ -310,42 +343,23 @@ function init()
 		document.addEventListener('mozpointerlockchange', pointerlockChange, false);
 		document.addEventListener('webkitpointerlockchange', pointerlockChange, false);
 
-	}
+	} // end if (mouseControl)
 
-	if (mouseControl) 
+
+	/* // Fullscreen API (optional)
+	document.addEventListener("click", function() 
 	{
-		gui.domElement.addEventListener("mouseenter", function (event) 
-		{
-			ableToEngagePointerLock = false;
-		}, false);
-		gui.domElement.addEventListener("mouseleave", function (event) 
-		{
-			ableToEngagePointerLock = true;
-		}, false);
-	}
-	
-	window.addEventListener('resize', onWindowResize, false);
-
-	/*
-	// Fullscreen API (optional)
-	document.addEventListener("click", function() {
-		
 		if ( !document.fullscreenElement && !document.mozFullScreenElement && !document.webkitFullscreenElement ) 
 		{
 			if (document.documentElement.requestFullscreen) 
-			{
 				document.documentElement.requestFullscreen();	
-			} 
 			else if (document.documentElement.mozRequestFullScreen) 
-			{
 				document.documentElement.mozRequestFullScreen();
-			} else if (document.documentElement.webkitRequestFullscreen) 
-			{
+			else if (document.documentElement.webkitRequestFullscreen) 
 				document.documentElement.webkitRequestFullscreen();
-			}
 		}
-	});
-	*/
+	}); */
+	
 
 	initTHREEjs(); // boilerplate: init necessary three.js items and scene/demo-specific objects
 
@@ -445,6 +459,12 @@ function initTHREEjs()
 	initSceneData();
 
 	pixel_ResolutionController.setValue(pixelRatio);
+	if (!allowOrthographicCamera && !mouseControl)
+	{
+		orthographicCamera_ToggleController.domElement.hidden = true;
+		orthographicCamera_ToggleController.domElement.remove();
+	}
+		
 
 
 	// setup screen-size quad geometry and shaders....
@@ -471,6 +491,7 @@ function initTHREEjs()
 	pathTracingUniforms.uFocusDistance = { type: "f", value: focusDistance };
 
 	pathTracingUniforms.uCameraIsMoving = { type: "b1", value: false };
+	pathTracingUniforms.uUseOrthographicCamera = { type: "b1", value: false };
 
 
 	pathTracingDefines = {
@@ -748,11 +769,27 @@ function animate()
 			{
 				decreaseAperture = true;
 			}
+			if (keyPressed('o') && canPress_O)
+			{
+				changeToOrthographicCamera = true;
+				canPress_O = false;
+			}
+			if (!keyPressed('o'))
+				canPress_O = true;
+
+			if (keyPressed('p') && canPress_P)
+			{
+				changeToPerspectiveCamera = true;
+				canPress_P = false;
+			}
+			if (!keyPressed('p'))
+				canPress_P = true;
 		} // end if (!isPaused)
 
 	} // end if (useGenericInput)
 
 	
+		
 	// update scene/demo-specific input(if custom), variables and uniforms every animation frame
 	updateVariablesAndUniforms();
 
@@ -760,8 +797,8 @@ function animate()
 	if (increaseFOV)
 	{
 		worldCamera.fov++;
-		if (worldCamera.fov > 150)
-			worldCamera.fov = 150;
+		if (worldCamera.fov > 179)
+			worldCamera.fov = 179;
 		fovScale = worldCamera.fov * 0.5 * (Math.PI / 180.0);
 		pathTracingUniforms.uVLen.value = Math.tan(fovScale);
 		pathTracingUniforms.uULen.value = pathTracingUniforms.uVLen.value * worldCamera.aspect;
@@ -816,6 +853,30 @@ function animate()
 		pathTracingUniforms.uApertureSize.value = apertureSize;
 		cameraIsMoving = true;
 		decreaseAperture = false;
+	}
+	if (allowOrthographicCamera && changeToOrthographicCamera)
+	{
+		storedFOV = worldCamera.fov; // save current perspective camera's FOV
+
+		worldCamera.fov = 60; // good default for Ortho camera - lets user see most of the scene
+		fovScale = worldCamera.fov * 0.5 * (Math.PI / 180.0);
+		pathTracingUniforms.uVLen.value = Math.tan(fovScale);
+		pathTracingUniforms.uULen.value = pathTracingUniforms.uVLen.value * worldCamera.aspect;
+
+		pathTracingUniforms.uUseOrthographicCamera.value = true;
+		cameraIsMoving = true;
+		changeToOrthographicCamera = false;
+	}
+	if (allowOrthographicCamera && changeToPerspectiveCamera)
+	{
+		worldCamera.fov = storedFOV; // return to prior perspective camera's FOV
+		fovScale = worldCamera.fov * 0.5 * (Math.PI / 180.0);
+		pathTracingUniforms.uVLen.value = Math.tan(fovScale);
+		pathTracingUniforms.uULen.value = pathTracingUniforms.uVLen.value * worldCamera.aspect;
+
+		pathTracingUniforms.uUseOrthographicCamera.value = false;
+		cameraIsMoving = true;
+		changeToPerspectiveCamera = false;
 	}
 
 	// now update uniforms that are common to all scenes
