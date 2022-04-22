@@ -84,6 +84,8 @@ function initSceneData()
 	// game-specific settings and three.js variables / Oimo.js physics setup goes here
 	sceneIsDynamic = true;
 	
+	allowOrthographicCamera = false;
+
 	cameraFlightSpeed = 30;
 	
 	// pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
