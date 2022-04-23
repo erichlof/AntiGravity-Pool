@@ -62,19 +62,6 @@ let audioLoader;
 let listener;
 
 
-// overwrite onMouseWheel function
-function onMouseWheel(event)
-{
-	event.stopPropagation();
-
-	if (event.deltaY > 0) 
-		dollyCameraOut = true;
-
-	else if (event.deltaY < 0) 
-		dollyCameraIn = true;
-}
-
-
 // called automatically from within initTHREEjs() function (located in InitCommon.js file)
 function initSceneData() 
 {        
@@ -532,13 +519,6 @@ function updateOimoPhysics()
 		}
 
 	} // end if (shotIsInProgress && allBallsHaveStopped)
-
-
-	
-	
-
-	
-
 	
 } // end function updateOimoPhysics()
 
@@ -718,6 +698,11 @@ function doGameStateLogic(ballPocketed)
 // called automatically from within the animate() function (located in InitCommon.js file)
 function updateVariablesAndUniforms() 
 {
+
+	// disable horizontal pinch FOV changing on mobile
+	increaseFOV = decreaseFOV = false;
+	// disable vertical pinch aperture size changing on mobile
+	increaseAperture = decreaseAperture = false;
 	
 	if (playerIsAiming) 
 	{
