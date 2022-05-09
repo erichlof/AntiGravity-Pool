@@ -160,8 +160,8 @@ function initSceneData()
 	} );
 
 	// app/game-specific uniforms go here
-	pathTracingUniforms.uShotIsInProgress = { type: "b1", value: false };
-	pathTracingUniforms.uBallPositions = { type: "v3v", value: ballPositions };
+	pathTracingUniforms.uShotIsInProgress = { value: false };
+	pathTracingUniforms.uBallPositions = { value: ballPositions };
 	
 	
 	startNewGame();
