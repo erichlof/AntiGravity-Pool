@@ -276,7 +276,7 @@ vec3 CalculateRadiance(out vec3 objectNormal, out vec3 objectColor, out float ob
 			}
 			lightChoice = spheres[intBest];
 
-			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.13);
+			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.1);
 			mask *= diffuseCount == 1 ? 2.0 : 1.0;
 			mask *= N_LIGHTS;
 			mask *= max(0.0, dot(nl, dirToLight)) * 0.005;
@@ -370,7 +370,7 @@ vec3 CalculateRadiance(out vec3 objectNormal, out vec3 objectColor, out float ob
 			}
 			lightChoice = spheres[intBest];
 
-			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.2);
+			dirToLight = randomDirectionInSpecularLobe(normalize(lightChoice.position - x), 0.15);
 			
 			mask *= N_LIGHTS;
 			mask *= max(0.0, dot(nl, dirToLight)) * 0.03;//0.01;
