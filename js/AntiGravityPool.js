@@ -76,7 +76,7 @@ function initSceneData()
 	cameraFlightSpeed = 30;
 	
 	// pixelRatio is resolution - range: 0.5(half resolution) to 1.0(full resolution)
-	pixelRatio = mouseControl ? 0.75 : 0.75;
+	pixelRatio = mouseControl ? 0.8 : 0.8;
 
 	EPS_intersect = 0.001;
 
@@ -226,36 +226,36 @@ function startNewGame()
 	rigidBodies[1] = world.add({type:'sphere', name:'blackball', size:[sphereSize], pos:[x, y, z], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
 	
 	// red balls
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[2] = world.add({type:'sphere', name:'redball2', size:[sphereSize], pos:[-sml + rnd0,sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[3] = world.add({type:'sphere', name:'redball3', size:[sphereSize], pos:[sml + rnd0,sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[4] = world.add({type:'sphere', name:'redball4', size:[sphereSize], pos:[-sml + rnd0,-sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[5] = world.add({type:'sphere', name:'redball5', size:[sphereSize], pos:[sml + rnd0,-sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[6] = world.add({type:'sphere', name:'redball6', size:[sphereSize], pos:[0 + rnd0,lrg + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[7] = world.add({type:'sphere', name:'redball7', size:[sphereSize], pos:[lrg + rnd0,0 + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[8] = world.add({type:'sphere', name:'redball8', size:[sphereSize], pos:[0 + rnd0,0 + rnd1,-lrg + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
 	
 	
 	// yellow balls
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[9] = world.add({type:'sphere', name:'yellowball9', size:[sphereSize], pos:[sml + rnd0,sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[10] = world.add({type:'sphere', name:'yellowball10', size:[sphereSize], pos:[-sml + rnd0,sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[11] = world.add({type:'sphere', name:'yellowball11', size:[sphereSize], pos:[sml + rnd0,-sml + rnd1,-sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[12] = world.add({type:'sphere', name:'yellowball12', size:[sphereSize], pos:[-sml + rnd0,-sml + rnd1,sml + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[13] = world.add({type:'sphere', name:'yellowball13', size:[sphereSize], pos:[0 + rnd0,-lrg + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[14] = world.add({type:'sphere', name:'yellowball14', size:[sphereSize], pos:[-lrg + rnd0,0 + rnd1,0 + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
-	rnd0 = THREE.Math.randFloat(-range, range); rnd1 = THREE.Math.randFloat(-range, range); rnd2 = THREE.Math.randFloat(-range, range);
+	rnd0 = THREE.MathUtils.randFloat(-range, range); rnd1 = THREE.MathUtils.randFloat(-range, range); rnd2 = THREE.MathUtils.randFloat(-range, range);
 	rigidBodies[15] = world.add({type:'sphere', name:'yellowball15', size:[sphereSize], pos:[0 + rnd0,0 + rnd1,lrg + rnd2], move:false, world:world, density: sphereDensity, friction: 0.0, restitution: 0.9});
 	
 
