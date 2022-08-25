@@ -726,11 +726,11 @@ function updateVariablesAndUniforms()
 		}
 	}
 
-	if (!keyPressed('space') && !button5Pressed && !shotIsInProgress) 
+	if (!keyPressed('Space') && !button5Pressed && !shotIsInProgress) 
 	{
 		canPressSpacebar = true;
 	}
-	if ((keyPressed('space') || button5Pressed) && canPressSpacebar)
+	if ((keyPressed('Space') || button5Pressed) && canPressSpacebar)
 	{ 
 		canPressSpacebar = false;
 
@@ -811,38 +811,38 @@ function updateVariablesAndUniforms()
 
 		} // end else if (isShooting)
 		
-	} // end if ((keyPressed('space') || button5Pressed) && canPressSpacebar)
+	} // end if ((keyPressed('Space') || button5Pressed) && canPressSpacebar)
 	
 
 	if (shotIsInProgress) 
 	{
 		// allow flying camera
-		if ((keyPressed('w') || button3Pressed) && !(keyPressed('s') || button4Pressed))
+		if ((keyPressed('KeyW') || button3Pressed) && !(keyPressed('KeyS') || button4Pressed))
 		{
 			cameraControlsObject.position.add(cameraDirectionVector.multiplyScalar(cameraFlightSpeed * frameTime));
 			cameraIsMoving = true;
 		}
-		if ((keyPressed('s') || button4Pressed) && !(keyPressed('w') || button3Pressed))
+		if ((keyPressed('KeyS') || button4Pressed) && !(keyPressed('KeyW') || button3Pressed))
 		{
 			cameraControlsObject.position.sub(cameraDirectionVector.multiplyScalar(cameraFlightSpeed * frameTime));
 			cameraIsMoving = true;
 		}
-		if ((keyPressed('a') || button1Pressed) && !(keyPressed('d') || button2Pressed))
+		if ((keyPressed('KeyA') || button1Pressed) && !(keyPressed('KeyD') || button2Pressed))
 		{
 			cameraControlsObject.position.sub(cameraRightVector.multiplyScalar(cameraFlightSpeed * frameTime));
 			cameraIsMoving = true;
 		}
-		if ((keyPressed('d') || button2Pressed) && !(keyPressed('a') || button1Pressed))
+		if ((keyPressed('KeyD') || button2Pressed) && !(keyPressed('KeyA') || button1Pressed))
 		{
 			cameraControlsObject.position.add(cameraRightVector.multiplyScalar(cameraFlightSpeed * frameTime));
 			cameraIsMoving = true;
 		}
-		if (keyPressed('q') && !keyPressed('z'))
+		if (keyPressed('KeyQ') && !keyPressed('KeyZ'))
 		{
 			cameraControlsObject.position.add(cameraUpVector.multiplyScalar(cameraFlightSpeed * frameTime));
 			cameraIsMoving = true;
 		}
-		if (keyPressed('z') && !keyPressed('q'))
+		if (keyPressed('KeyZ') && !keyPressed('KeyQ'))
 		{
 			cameraControlsObject.position.sub(cameraUpVector.multiplyScalar(cameraFlightSpeed * frameTime));
 			cameraIsMoving = true;
