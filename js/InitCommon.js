@@ -31,6 +31,7 @@ let dollyCameraOut = false;
 let apertureSize = 0.0;
 let increaseAperture = false;
 let decreaseAperture = false;
+let apertureChangeSpeed = 1;
 let focusDistance = 132.0;
 let increaseFocusDist = false;
 let decreaseFocusDist = false;
@@ -57,6 +58,7 @@ let pinchDeltaY = 0;
 let fontAspect;
 let useGenericInput = true;
 let EPS_intersect;
+let textureLoader = new THREE.TextureLoader();
 let blueNoiseTexture;
 let useToneMapping = true;
 let canPress_O = true;
@@ -113,14 +115,14 @@ let KeyboardState = {
 function onKeyDown(event)
 {
 	event.preventDefault();
-	
+
 	KeyboardState[event.code] = true;
 }
 
 function onKeyUp(event)
 {
 	event.preventDefault();
-	
+
 	KeyboardState[event.code] = false;
 }
 
@@ -137,15 +139,15 @@ function onMouseWheel(event)
 {
 	if (isPaused)
 		return;
-		
+
 	// use the following instead, because event.preventDefault() gives errors in console
-	event.stopPropagation(); 
+	event.stopPropagation();
 
 	if (event.deltaY > 0)
 	{
 		increaseFOV = true;
 		dollyCameraOut = true;
-	} 
+	}
 	else if (event.deltaY < 0)
 	{
 		decreaseFOV = true;
@@ -213,7 +215,7 @@ function onWindowResize(event)
 			button4Element.style.bottom = 2 + "%";
 			button5Element.style.bottom = 25 + "%";
 			button6Element.style.bottom = 18 + "%";
-		} 
+		}
 		else
 		{
 			button1Element.style.right = 22 + "%";
@@ -289,7 +291,7 @@ function init()
 	gui.domElement.style.userSelect = "none";
 	gui.domElement.style.MozUserSelect = "none";
 
-	
+
 	if (mouseControl) 
 	{
 
@@ -360,9 +362,27 @@ function init()
 				document.documentElement.webkitRequestFullscreen();
 		}
 	}); */
-	
 
-	initTHREEjs(); // boilerplate: init necessary three.js items and scene/demo-specific objects
+	// load a resource
+	blueNoiseTexture = textureLoader.load(
+		// resource URL
+		'textures/BlueNoise_RGBA256.png',
+
+		// onLoad callback
+		function (texture)
+		{
+			texture.wrapS = THREE.RepeatWrapping;
+			texture.wrapT = THREE.RepeatWrapping;
+			texture.flipY = false;
+			texture.minFilter = THREE.NearestFilter;
+			texture.magFilter = THREE.NearestFilter;
+			texture.generateMipmaps = false;
+			//console.log("blue noise texture loaded");
+
+			initTHREEjs(); // boilerplate: init necessary three.js items and scene/demo-specific objects
+		}
+	);
+
 
 } // end function init()
 
@@ -446,15 +466,7 @@ function initTHREEjs()
 	});
 	screenCopyRenderTarget.texture.generateMipmaps = false;
 
-	// blueNoise texture used in all demos
-	blueNoiseTexture = new THREE.TextureLoader().load('textures/BlueNoise_RGBA256.png');
-	blueNoiseTexture.wrapS = THREE.RepeatWrapping;
-	blueNoiseTexture.wrapT = THREE.RepeatWrapping;
-	blueNoiseTexture.flipY = false;
-	blueNoiseTexture.minFilter = THREE.NearestFilter;
-	blueNoiseTexture.magFilter = THREE.NearestFilter;
-	blueNoiseTexture.generateMipmaps = false;
-
+	
 
 	// setup scene/demo-specific objects, variables, GUI elements, and data
 	initSceneData();
@@ -465,7 +477,7 @@ function initTHREEjs()
 		orthographicCamera_ToggleController.domElement.hidden = true;
 		orthographicCamera_ToggleController.domElement.remove();
 	}
-		
+
 
 
 	// setup screen-size quad geometry and shaders....
@@ -538,8 +550,9 @@ function initTHREEjs()
 		tPathTracedImageTexture: { type: "t", value: pathTracingRenderTarget.texture }
 	};
 
-	fileLoader.load('shaders/ScreenCopy_Fragment.glsl', function (shaderText) {
-		
+	fileLoader.load('shaders/ScreenCopy_Fragment.glsl', function (shaderText)
+	{
+
 		screenCopyFragmentShader = shaderText;
 
 		screenCopyMaterial = new THREE.ShaderMaterial({
@@ -570,7 +583,8 @@ function initTHREEjs()
 		uUseToneMapping: { type: "b1", value: useToneMapping }
 	};
 
-	fileLoader.load('shaders/ScreenOutput_Fragment.glsl', function (shaderText) {
+	fileLoader.load('shaders/ScreenOutput_Fragment.glsl', function (shaderText)
+	{
 
 		screenOutputFragmentShader = shaderText;
 
@@ -722,25 +736,25 @@ function animate()
 
 	if (useGenericInput)
 	{
-		
+
 		if (!isPaused)
 		{
-			if ((keyPressed('KeyW') || button3Pressed) && !(keyPressed('KeyS') || button4Pressed) )
+			if ((keyPressed('KeyW') || button3Pressed) && !(keyPressed('KeyS') || button4Pressed))
 			{
 				cameraControlsObject.position.add(cameraDirectionVector.multiplyScalar(cameraFlightSpeed * frameTime));
 				cameraIsMoving = true;
 			}
-			if ((keyPressed('KeyS') || button4Pressed) && !(keyPressed('KeyW') || button3Pressed) )
+			if ((keyPressed('KeyS') || button4Pressed) && !(keyPressed('KeyW') || button3Pressed))
 			{
 				cameraControlsObject.position.sub(cameraDirectionVector.multiplyScalar(cameraFlightSpeed * frameTime));
 				cameraIsMoving = true;
 			}
-			if ((keyPressed('KeyA') || button1Pressed) && !(keyPressed('KeyD') || button2Pressed) )
+			if ((keyPressed('KeyA') || button1Pressed) && !(keyPressed('KeyD') || button2Pressed))
 			{
 				cameraControlsObject.position.sub(cameraRightVector.multiplyScalar(cameraFlightSpeed * frameTime));
 				cameraIsMoving = true;
 			}
-			if ( (keyPressed('KeyD') || button2Pressed) && !(keyPressed('KeyA') || button1Pressed) )
+			if ((keyPressed('KeyD') || button2Pressed) && !(keyPressed('KeyA') || button1Pressed))
 			{
 				cameraControlsObject.position.add(cameraRightVector.multiplyScalar(cameraFlightSpeed * frameTime));
 				cameraIsMoving = true;
@@ -755,11 +769,11 @@ function animate()
 				cameraControlsObject.position.sub(cameraUpVector.multiplyScalar(cameraFlightSpeed * frameTime));
 				cameraIsMoving = true;
 			}
-			if ((keyPressed('ArrowUp') || button5Pressed) && !(keyPressed('ArrowDown') || button6Pressed) )
+			if ((keyPressed('ArrowUp') || button5Pressed) && !(keyPressed('ArrowDown') || button6Pressed))
 			{
 				increaseFocusDist = true;
 			}
-			if ((keyPressed('ArrowDown') || button6Pressed) && !(keyPressed('ArrowUp') || button5Pressed) )
+			if ((keyPressed('ArrowDown') || button6Pressed) && !(keyPressed('ArrowUp') || button5Pressed))
 			{
 				decreaseFocusDist = true;
 			}
@@ -790,8 +804,8 @@ function animate()
 
 	} // end if (useGenericInput)
 
-	
-		
+
+
 	// update scene/demo-specific input(if custom), variables and uniforms every animation frame
 	updateVariablesAndUniforms();
 
@@ -840,16 +854,16 @@ function animate()
 
 	if (increaseAperture)
 	{
-		apertureSize += 0.1;
-		if (apertureSize > 100.0)
-			apertureSize = 100.0;
+		apertureSize += (0.1 * apertureChangeSpeed);
+		if (apertureSize > 10000.0)
+			apertureSize = 10000.0;
 		pathTracingUniforms.uApertureSize.value = apertureSize;
 		cameraIsMoving = true;
 		increaseAperture = false;
 	}
 	if (decreaseAperture)
 	{
-		apertureSize -= 0.1;
+		apertureSize -= (0.1 * apertureChangeSpeed);
 		if (apertureSize < 0.0)
 			apertureSize = 0.0;
 		pathTracingUniforms.uApertureSize.value = apertureSize;
@@ -922,7 +936,7 @@ function animate()
 	screenOutputUniforms.uSampleCounter.value = sampleCounter;
 	// PROGRESSIVE SAMPLE WEIGHT (reduces intensity of each successive animation frame's image)
 	screenOutputUniforms.uOneOverSampleCounter.value = 1.0 / sampleCounter;
-	
+
 
 	// RENDERING in 3 steps
 
