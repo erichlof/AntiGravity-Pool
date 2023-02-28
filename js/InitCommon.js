@@ -280,9 +280,8 @@ function init()
 		currentlyUsingOrthographicCamera = !currentlyUsingOrthographicCamera;
 	}
 
-	// since I use the lil-gui.min.js minified version of lil-gui without modern exports, 
-	//'g()' is 'GUI()' ('g' is the shortened version of 'GUI' inside the lil-gui.min.js file)
-	gui = new g(); // same as gui = new GUI();
+
+	gui = new GUI();
 
 	pixel_ResolutionController = gui.add(pixel_ResolutionObject, 'pixel_Resolution', 0.5, 1.0, 0.05).onChange(handlePixelResolutionChange);
 	if (!mouseControl)
@@ -466,7 +465,16 @@ function initTHREEjs()
 	});
 	screenCopyRenderTarget.texture.generateMipmaps = false;
 
-	
+	// blueNoise texture used in all demos
+	/* blueNoiseTexture = new THREE.TextureLoader().load('textures/BlueNoise_RGBA256.png');
+	blueNoiseTexture.wrapS = THREE.RepeatWrapping;
+	blueNoiseTexture.wrapT = THREE.RepeatWrapping;
+	blueNoiseTexture.flipY = false;
+	blueNoiseTexture.minFilter = THREE.NearestFilter;
+	blueNoiseTexture.magFilter = THREE.NearestFilter;
+	blueNoiseTexture.generateMipmaps = false; */
+
+
 
 	// setup scene/demo-specific objects, variables, GUI elements, and data
 	initSceneData();
