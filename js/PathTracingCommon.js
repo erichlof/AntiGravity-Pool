@@ -2373,43 +2373,23 @@ float CheapTorusIntersect( vec3 rayOrigin, vec3 rayDirection, float torusHoleSiz
 	float t0, t1;
 	float t = INFINITY;
 
-	// Torus Inside (Hyperboloid)
+	// Torus Outside (partial Sphere, with top and bottom portions removed)
 	// quadratic equation coefficients
-	float a = (rd.x * rd.x) + (rd.z * rd.z) - (rd.y * rd.y);
-	float b = 2.0 * ((rd.x * ro.x) + (rd.z * ro.z) - (rd.y * ro.y));
-	float c = (ro.x * ro.x) + (ro.z * ro.z) - (ro.y * ro.y) - torusHoleSize;
-
-	solveQuadratic(a, b, c, t0, t1);
+	float a = dot(rd, rd);
+	float b = 2.0 * dot(rd, ro);
+	float c = dot(ro, ro) - (torusHoleSize + 2.0);
 	
-	if (t1 > 0.0)
-	{	
-		ip = ro + (rd * t1);
-		if (abs(ip.y) < 1.0)
-		{
-			n = vec3( ip.x, -ip.y, ip.z );
-			n = dot(rd, n) < 0.0 ? n : -n;
-			t = t1;
-		}	
-	}
+	solveQuadratic(a, b, c, t0, t1);
 
 	if (t0 > 0.0)
 	{
 		ip = ro + (rd * t0);
 		if (abs(ip.y) < 1.0)
 		{
-			n = vec3( ip.x, -ip.y, ip.z );
-			n = dot(rd, n) < 0.0 ? n : -n;
+			n = ip;
 			t = t0;
 		}		
 	}
-
-	// Torus Outside (partial Sphere, with top and bottom portions removed)
-	// quadratic equation coefficients
-	a = dot(rd, rd);
-	b = 2.0 * dot(rd, ro);
-	c = dot(ro, ro) - (torusHoleSize + 2.0);
-	
-	solveQuadratic(a, b, c, t0, t1);
 
 	if (t1 > 0.0 && t1 < t)
 	{	
@@ -2421,14 +2401,34 @@ float CheapTorusIntersect( vec3 rayOrigin, vec3 rayDirection, float torusHoleSiz
 		}	
 	}
 
+	// Torus Inside (Hyperboloid)
+	// quadratic equation coefficients
+	a = (rd.x * rd.x) + (rd.z * rd.z) - (rd.y * rd.y);
+	b = 2.0 * ((rd.x * ro.x) + (rd.z * ro.z) - (rd.y * ro.y));
+	c = (ro.x * ro.x) + (ro.z * ro.z) - (ro.y * ro.y) - torusHoleSize;
+
+	solveQuadratic(a, b, c, t0, t1);
+	
 	if (t0 > 0.0 && t0 < t)
 	{
 		ip = ro + (rd * t0);
 		if (abs(ip.y) < 1.0)
 		{
-			n = ip;
+			n = vec3( ip.x, -ip.y, ip.z );
+			n = dot(rd, n) < 0.0 ? n : -n;
 			t = t0;
 		}		
+	}
+
+	if (t1 > 0.0 && t1 < t)
+	{	
+		ip = ro + (rd * t1);
+		if (abs(ip.y) < 1.0)
+		{
+			n = vec3( ip.x, -ip.y, ip.z );
+			n = dot(rd, n) < 0.0 ? n : -n;
+			t = t1;
+		}	
 	}
 
 	return t;	
