@@ -2895,9 +2895,9 @@ vec3 Get_Sky_Color(vec3 rayDir)
 	vec3 Lin = pow( sunE * ( ( betaRTheta + betaMTheta ) / ( rayleighAtX + mieAtX ) ) * ( 1.0 - Fex ), vec3( 1.5 ) );
 	Lin *= mix( vec3( 1.0 ), pow( sunE * ( ( betaRTheta + betaMTheta ) / ( rayleighAtX + mieAtX ) ) * Fex, vec3( 0.5 ) ), clamp( pow( 1.0 - cosSunUpAngle, 5.0 ), 0.0, 1.0 ) );
 	// nightsky
-	float theta = acos( viewDirection.y ); // elevation --> y-axis, [-pi/2, pi/2]
-	float phi = atan( viewDirection.z, viewDirection.x ); // azimuth --> x-axis [-pi/2, pi/2]
-	vec2 uv = vec2( phi, theta ) / vec2( 2.0 * PI, PI ) + vec2( 0.5, 0.0 );
+	//float theta = acos( viewDirection.y ); // elevation --> y-axis, [-pi/2, pi/2]
+	//float phi = atan( viewDirection.z, viewDirection.x ); // azimuth --> x-axis [-pi/2, pi/2]
+	//vec2 uv = vec2( phi, theta ) / vec2( 2.0 * PI, PI ) + vec2( 0.5, 0.0 );
 	vec3 L0 = vec3( 0.1 ) * Fex;
 	// composition + solar disc
 	float sundisk = smoothstep( SUN_ANGULAR_DIAMETER_COS, SUN_ANGULAR_DIAMETER_COS + 0.00002, cosViewSunAngle );
@@ -3061,29 +3061,29 @@ vec3 sampleQuadLight(vec3 x, vec3 nl, Quad light, out float weight)
 `;
 
 THREE.ShaderChunk[ 'pathtracing_calc_fresnel_reflectance' ] = `
-float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etai, float etat, out float IoR_ratio)
+float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etaI, float etaT, out float IoR_ratio)
 {
-	float temp = etai;
-	float cosi = clamp(dot(rayDirection, n), -1.0, 1.0);
-	if (cosi > 0.0)
-	{
-		etai = etat;
-		etat = temp;
+	float cosThetaI = clamp(dot(-rayDirection, n), -1.0, 1.0);
+	float temp = etaI;
+	if (cosThetaI < 0.0)
+	{	
+		etaI = etaT;
+		etaT = temp;
 	}
-	
-	IoR_ratio = etai / etat;
-	float sint2 = IoR_ratio * IoR_ratio * (1.0 - (cosi * cosi));
-	if (sint2 >= 1.0) 
-		return 1.0; // total internal reflection
-	float cost = sqrt(1.0 - sint2);
-	cosi = abs(cosi);
-	float etatxcosi = etat * cosi;
-	float etaixcost = etai * cost;
-	float etaixcosi = etai * cosi;
-	float etatxcost = etat * cost;
-	float Rs = (etatxcosi - etaixcost) / (etatxcosi + etaixcost);
-	float Rp = (etaixcosi - etatxcost) / (etaixcosi + etatxcost);
-	return clamp( 0.5 * ((Rs * Rs) + (Rp * Rp)), 0.0, 1.0 );
+	IoR_ratio = etaI / etaT;
+	cosThetaI = abs(cosThetaI);
+	float sin2ThetaT = (IoR_ratio * IoR_ratio) * (1.0 - (cosThetaI * cosThetaI));
+	if (sin2ThetaT >= 1.0) // handle total internal reflection
+		return 1.0; 
+	float cosThetaT = sqrt(1.0 - sin2ThetaT);
+
+	float etaT_x_cosThetaI = etaT * cosThetaI;
+	float etaI_x_cosThetaT = etaI * cosThetaT;
+	float etaI_x_cosThetaI = etaI * cosThetaI;
+	float etaT_x_cosThetaT = etaT * cosThetaT;
+	float Rparl = (etaT_x_cosThetaI - etaI_x_cosThetaT) / (etaT_x_cosThetaI + etaI_x_cosThetaT);
+    	float Rperp = (etaI_x_cosThetaI - etaT_x_cosThetaT) / (etaI_x_cosThetaI + etaT_x_cosThetaT);
+    	return clamp(0.5 * ((Rparl * Rparl) + (Rperp * Rperp)), 0.0, 1.0);
 }
 `;
 
