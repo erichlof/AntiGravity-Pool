@@ -694,14 +694,10 @@ void main( void )
 	
 	// calculate unique seed for rng() function
 	seed = uvec2(uFrameCounter, uFrameCounter + 1.0) * uvec2(gl_FragCoord);
-
 	// initialize rand() variables
-	counter = -1.0; // will get incremented by 1 on each call to rand()
-	channel = 0; // the final selected color channel to use for rand() calc (range: 0 to 3, corresponds to R,G,B, or A)
 	randNumber = 0.0; // the final randomly-generated number (range: 0.0 to 1.0)
-	randVec4 = vec4(0); // samples and holds the RGBA blueNoise texture value for this pixel
-	randVec4 = texelFetch(tBlueNoiseTexture, ivec2(mod(gl_FragCoord.xy + floor(uRandomVec2 * 256.0), 256.0)), 0);
-	
+	blueNoise = texelFetch(tBlueNoiseTexture, ivec2(mod(floor(gl_FragCoord.xy), 256.0)), 0).r;
+
 	vec2 pixelOffset = vec2( tentFilter(rand()), tentFilter(rand()) ) * 0.1;
 	
 	// we must map pixelPos into the range -1.0 to +1.0
