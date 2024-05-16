@@ -58,7 +58,7 @@ void main()
 	int count = 1;
 
 	// start with center pixel
-	filteredPixelColor = centerPixel.rgb;
+	filteredPixelColor = m25[12].rgb;
 
 	// search left
 	if (m25[11].a < threshold)
@@ -194,7 +194,7 @@ void main()
 
 
 	// next, use a smaller blur kernel (3x3), which helps with 
-	// objects that are seen through glass/transparent objects 
+	// objects when seen through glass/transparent objects 
 
 	// 3x3 kernel
 	vec4 m9[9];
@@ -213,47 +213,126 @@ void main()
 	if (centerPixel.a == -1.0) // transparent surface pixel
 	{
 		// reset variables
+		centerPixel = m9[4];
 		count = 1;
 
 		// start with center pixel
-		filteredPixelColor = centerPixel.rgb;
+		filteredPixelColor = m9[4].rgb;
 
-		for (int i = 0; i < 9; i++)
+		// search left
+		if (m9[3].a < threshold)
 		{
-			if (i == 4) continue;
+			filteredPixelColor += m9[3].rgb;
+			count++; 
+		}
+		// search right
+		if (m9[5].a < threshold)
+		{
+			filteredPixelColor += m9[5].rgb;
+			count++; 
+		}
+		// search above
+		if (m9[1].a < threshold)
+		{
+			filteredPixelColor += m9[1].rgb;
+			count++; 
+		}
+		// search below
+		if (m9[7].a < threshold)
+		{
+			filteredPixelColor += m9[7].rgb;
+			count++; 
+		}
 
-			if (m9[i].a < threshold)
-			{
-				filteredPixelColor += m9[i].rgb;
-				count++;
-			}
+		// search upper-left
+		if (m9[0].a < threshold)
+		{
+			filteredPixelColor += m9[0].rgb;
+			count++; 
+		}
+		// search upper-right
+		if (m9[2].a < threshold)
+		{
+			filteredPixelColor += m9[2].rgb;
+			count++; 
+		}
+		// search lower-left
+		if (m9[6].a < threshold)
+		{
+			filteredPixelColor += m9[6].rgb;
+			count++; 
+		}
+		// search lower-right
+		if (m9[8].a < threshold)
+		{
+			filteredPixelColor += m9[8].rgb;
+			count++; 
 		}
 
 		filteredPixelColor /= float(count);
 
 	} // end if (centerPixel.a == -1.0)
 
-	
 	// finally, if this is a sharp edge pixel, look for immediate neighbors that are 
 	//  also sharp edge pixels and blend with them. This helps make a more smooth, uniformly-colored 
 	// 'line' along edges, rather than leaving each line edge pixel as a pure random, noisy color.
 	if (!uSceneIsDynamic && centerPixel.a == 1.01) // edge pixel
 	{
 		// reset variables
+		centerPixel = m9[4];
 		count = 1;
 
 		// start with center pixel
-		edgePixelColor = centerPixel.rgb;
+		edgePixelColor = m9[4].rgb;
 
-		for (int i = 0; i < 9; i++)
+		// search left
+		if (m9[3].a == 1.01)
 		{
-			if (i == 4) continue;
+			edgePixelColor += m9[3].rgb;
+			count++; 
+		}
+		// search right
+		if (m9[5].a == 1.01)
+		{
+			edgePixelColor += m9[5].rgb;
+			count++; 
+		}
+		// search above
+		if (m9[1].a == 1.01)
+		{
+			edgePixelColor += m9[1].rgb;
+			count++; 
+		}
+		// search below
+		if (m9[7].a == 1.01)
+		{
+			edgePixelColor += m9[7].rgb;
+			count++; 
+		}
 
-			if (m9[i].a == 1.01)
-			{
-				edgePixelColor += m9[i].rgb;
-				count++;
-			}
+		// search upper-left
+		if (m9[0].a == 1.01)
+		{
+			edgePixelColor += m9[0].rgb;
+			count++; 
+		}
+		// search upper-right
+		if (m9[2].a == 1.01)
+		{
+			edgePixelColor += m9[2].rgb;
+			count++; 
+		}
+		// search lower-left
+		if (m9[6].a == 1.01)
+		{
+			edgePixelColor += m9[6].rgb;
+			count++; 
+		}
+		// search lower-right
+		if (m9[8].a == 1.01)
+		{
+			edgePixelColor += m9[8].rgb;
+			count++; 
 		}
 
 		edgePixelColor /= float(count);
@@ -285,7 +364,7 @@ void main()
 			filteredPixelColor = mix(filteredPixelColor, centerPixel.rgb, uPixelEdgeSharpness);
 		}
 	}
-
+	
 	// final filteredPixelColor processing ////////////////////////////////////
 
 	// average accumulation buffer
@@ -293,8 +372,7 @@ void main()
 
 	// apply tone mapping (brings pixel into 0.0-1.0 rgb color range)
 	filteredPixelColor = uUseToneMapping ? ReinhardToneMapping(filteredPixelColor) : filteredPixelColor;
-	
+
 	// lastly, apply gamma correction (gives more intensity/brightness range where it's needed)
-	// the sqrt(color) below has nearly identical results but is cheaper than calling the true 'pow(color, 1.0 / 2.2)' gamma correction
 	pc_fragColor = vec4(sqrt(filteredPixelColor), 1.0);
 }
