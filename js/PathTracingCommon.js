@@ -2765,10 +2765,11 @@ float BoundingBoxIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3
 
 
 THREE.ShaderChunk[ 'pathtracing_bvhTriangle_intersect' ] = `
+
 //-------------------------------------------------------------------------------------------------------------------
 float BVH_TriangleIntersect( vec3 v0, vec3 v1, vec3 v2, vec3 rayOrigin, vec3 rayDirection, out float u, out float v )
 //-------------------------------------------------------------------------------------------------------------------
-{
+{	// the usual Möller–Trumbore triangle intersection routine
 	vec3 edge1 = v1 - v0;
 	vec3 edge2 = v2 - v0;
 	vec3 pvec = cross(rayDirection, edge2);
@@ -2784,7 +2785,18 @@ float BVH_TriangleIntersect( vec3 v0, vec3 v1, vec3 v2, vec3 rayOrigin, vec3 ray
 /* //-------------------------------------------------------------------------------------------------------------------
 float BVH_TriangleIntersect( vec3 v0, vec3 v1, vec3 v2, vec3 rayOrigin, vec3 rayDirection, out float u, out float v )
 //-------------------------------------------------------------------------------------------------------------------
-{
+{	// NOTE: if this triangle intersection routine is used rather than the usual Möller–Trumbore one above,
+	// you must go inside each fragment shader where the U,V, and W components are read from the triangle
+	// data texture, and then you have to change the ordering from W U V, to U V W
+	// For example:
+	// hitNormal = (triangleW * vec3(vd2.yzw)) + (triangleU * vec3(vd3.xyz)) + (triangleV * vec3(vd3.w, vd4.xy));
+	// becomes
+	// hitNormal = (triangleU * vec3(vd2.yzw)) + (triangleV * vec3(vd3.xyz)) + (triangleW * vec3(vd3.w, vd4.xy));
+	// and
+	// hitUV = triangleW * vec2(vd4.zw) + triangleU * vec2(vd5.xy) + triangleV * vec2(vd5.zw);
+	// becomes
+	// hitUV = triangleU * vec2(vd4.zw) + triangleV * vec2(vd5.xy) + triangleW * vec2(vd5.zw);
+
 	//Inside-Outside Test	
 	vec3 n = cross(v1 - v0, v2 - v0);
 	float nDotDir = 1.0 / dot(n, rayDirection);
@@ -2816,6 +2828,7 @@ float BVH_TriangleIntersect( vec3 v0, vec3 v1, vec3 v2, vec3 rayOrigin, vec3 ray
 	v *= denom;
 	return t;
 } */
+
 `;
 
 THREE.ShaderChunk[ 'pathtracing_bvhDoubleSidedTriangle_intersect' ] = `
@@ -2913,20 +2926,18 @@ vec3 Get_Sky_Color(vec3 rayDir)
 
 THREE.ShaderChunk[ 'pathtracing_random_functions' ] = `
 // globals used in rand() function
-vec4 randVec4; // samples and holds the RGBA blueNoise texture value for this pixel
-float randNumber; // the final randomly generated number (range: 0.0 to 1.0)
-float counter; // will get incremented by 1 on each call to rand()
-int channel; // the final selected color channel to use for rand() calc (range: 0 to 3, corresponds to R,G,B, or A)
+float blueNoise;
+float randNumber;
+// the following rand() is from a 2024 article by the great Jacco Bikker (og behind Brigade Path Tracer)
+// https://jacco.ompf2.com/2024/05/15/ray-tracing-with-voxels-in-c-series-part-4/ 
 float rand()
 {
-	counter++; // increment counter by 1 on every call to rand()
-	// cycles through channels, if modulus is 1.0, channel will always be 0 (the R color channel)
-	channel = int(mod(counter, 2.0)); 
-	// but if modulus was 4.0, channel will cycle through all available channels: 0,1,2,3,0,1,2,3, and so on...
-	randNumber = randVec4[channel]; // get value stored in channel 0:R, 1:G, 2:B, or 3:A
-	return fract(randNumber); // we're only interested in randNumber's fractional value between 0.0 (inclusive) and 1.0 (non-inclusive)
-	//return clamp(randNumber,0.0,0.999999999); // we're only interested in randNumber's fractional value between 0.0 (inclusive) and 1.0 (non-inclusive)
+	// ensure randNumber keeps evolving (even when called multiple times during the same animation Frame),
+	// by adding to itself the blueNoise texture lookup (which does not change), and FrameCounter multiplied with Golden Ratio
+	randNumber += (blueNoise + (uFrameCounter * 0.61803399));
+	return fract(randNumber); // we only want the fractional portion, so [0.0 to 1.0) (but not including 1.0)
 }
+
 // from iq https://www.shadertoy.com/view/4tXyWN
 // global seed used in rng() function
 uvec2 seed;
@@ -2937,6 +2948,7 @@ float rng()
     	uint  n = 1103515245U * ( (q.x) ^ (q.y >> 3U) );
 	return float(n) * ONE_OVER_MAX_INT;// (1.0 / float(0xffffffffU));
 }
+//float rand(){return rng();}
 
 vec3 randomSphereDirection()
 {
@@ -3105,13 +3117,11 @@ void main( void )
 	// calculate unique seed for rng() function
 	seed = uvec2(uFrameCounter, uFrameCounter + 1.0) * uvec2(gl_FragCoord);
 	// initialize rand() variables
-	counter = -1.0; // will get incremented by 1 on each call to rand()
-	channel = 0; // the final selected color channel to use for rand() calc (range: 0 to 3, corresponds to R,G,B, or A)
 	randNumber = 0.0; // the final randomly-generated number (range: 0.0 to 1.0)
-	randVec4 = vec4(0); // samples and holds the RGBA blueNoise texture value for this pixel
-	randVec4 = texelFetch(tBlueNoiseTexture, ivec2(mod(floor(gl_FragCoord.xy) + floor(uRandomVec2 * 256.0), 256.0)), 0);
-	
+	blueNoise = texelFetch(tBlueNoiseTexture, ivec2(mod(floor(gl_FragCoord.xy), 256.0)), 0).r;
+
 	vec2 pixelOffset;
+	
 	if (uSampleCounter < 100.0)
 	{
 		pixelOffset = vec2( tentFilter(rand()), tentFilter(rand()) );
