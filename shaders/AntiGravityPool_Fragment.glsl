@@ -696,7 +696,7 @@ void main( void )
 	seed = uvec2(uFrameCounter, uFrameCounter + 1.0) * uvec2(gl_FragCoord);
 	// initialize rand() variables
 	randNumber = 0.0; // the final randomly-generated number (range: 0.0 to 1.0)
-	blueNoise = texelFetch(tBlueNoiseTexture, ivec2(mod(floor(gl_FragCoord.xy), 256.0)), 0).r;
+	blueNoise = texelFetch(tBlueNoiseTexture, ivec2(mod(floor(gl_FragCoord.xy), 128.0)), 0).r;
 
 	vec2 pixelOffset = vec2( tentFilter(rand()), tentFilter(rand()) ) * 0.1;
 	
