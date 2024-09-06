@@ -58,7 +58,7 @@ let oldPinchWidthY = 0;
 let pinchDeltaX = 0;
 let pinchDeltaY = 0;
 let useGenericInput = true;
-let EPS_intersect;
+let EPS_intersect = 0.01; // default precision
 let textureLoader = new THREE.TextureLoader();
 let blueNoiseTexture;
 let useToneMapping = true;
