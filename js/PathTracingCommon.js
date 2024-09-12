@@ -3199,24 +3199,15 @@ void main( void )
 		currentPixel.rgb *= 0.5; // brightness of new image (noisy)
 	}
 
-	// if current raytraced pixel didn't return any color value, just use the previous frame's pixel color
-	if (currentPixel.rgb == vec3(0.0))
-	{
-		currentPixel.rgb = previousPixel.rgb;
-		previousPixel.rgb *= 0.5;
-		currentPixel.rgb *= 0.5;
-	}
-
-
-	if (colorDifference >= 1.0 || normalDifference >= 1.0 || objectDifference >= 1.0)
-		pixelSharpness = 1.01;
-
+	if (colorDifference > 0.0 || normalDifference >= 1.0 || objectDifference >= 1.0)
+		pixelSharpness = 1.0; // 1.0 means an edge pixel
 
 	currentPixel.a = pixelSharpness;
 
-	// Eventually, all edge-containing pixels' .a (alpha channel) values will converge to 1.01, which keeps them from getting blurred by the box-blur filter, thus retaining sharpness.
-	if (previousPixel.a == 1.01)
-		currentPixel.a = 1.01;
+	// Eventually, all edge-containing pixels' .a (alpha channel) values will converge to 1.0, 
+	//   which keeps them from getting blurred by the box-blur filter, thus retaining sharpness over time.
+	if (previousPixel.a == 1.0) // an edge or a light source
+		currentPixel.a = 1.0;
 
 	pc_fragColor = vec4(previousPixel.rgb + currentPixel.rgb, currentPixel.a);
 }
