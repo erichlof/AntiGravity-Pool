@@ -724,14 +724,6 @@ void main( void )
 		currentPixel.rgb *= 0.1; // brightness of new image (noisy)
 	}
 
-	// if current raytraced pixel didn't return any color value, just use the previous frame's pixel color
-	if (currentPixel.rgb == vec3(0.0))
-	{
-		currentPixel.rgb = previousPixel.rgb;
-		previousPixel.rgb *= 0.5;
-		currentPixel.rgb *= 0.5;
-	}
-
 	currentPixel.a = pixelSharpness;
 
 	// check for all edges that are not light sources
