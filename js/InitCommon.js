@@ -43,6 +43,8 @@ let frameCounter = 1.0; // 1 instead of 0 because it is used as a rng() seed in 
 let cameraIsMoving = false;
 let cameraRecentlyMoving = false;
 let isPaused = true;
+let inputMovementHorizontal = 0;
+let inputMovementVertical = 0;
 let oldYawRotation, oldPitchRotation;
 let mobileJoystickControls = null;
 let mobileShowButtons = true;
@@ -82,12 +84,12 @@ let currentlyUsingOrthographicCamera = false;
 let cameraDirectionVector = new THREE.Vector3(); //for moving where the camera is looking
 let cameraRightVector = new THREE.Vector3(); //for strafing the camera right and left
 let cameraUpVector = new THREE.Vector3(); //for moving camera up and down
-let cameraWorldQuaternion = new THREE.Quaternion(); //for rotating scene objects to match camera's current rotation
 let cameraControlsObject; //for positioning and moving the camera itself
 let cameraControlsYawObject; //allows access to control camera's left/right movements through mobile input
 let cameraControlsPitchObject; //allows access to control camera's up/down movements through mobile input
-
 let PI_2 = Math.PI / 2; //used by controls below
+let inputRotationHorizontal = 0;
+let inputRotationVertical = 0;
 
 let infoElement = document.getElementById('info');
 infoElement.style.cursor = "default";
@@ -155,6 +157,95 @@ function onMouseWheel(event)
 		dollyCameraIn = true;
 	}
 }
+
+/**
+ * originally from https://github.com/mrdoob/three.js/blob/dev/examples/js/controls/PointerLockControls.js
+ * @author mrdoob / http://mrdoob.com/
+ *
+ * edited by Erich Loftis (erichlof on GitHub)
+ * https://github.com/erichlof
+ * Btw, this is the most concise and elegant way to implement first person camera rotation/movement that I've ever seen -
+ * look at how short it is, without spaces/braces it would be around 30 lines!  Way to go, mrdoob!
+ */
+
+function FirstPersonCameraControls(camera)
+{
+	camera.rotation.set(0, 0, 0);
+
+	let pitchObject = new THREE.Object3D();
+	pitchObject.add(camera);
+
+	let yawObject = new THREE.Object3D();
+	yawObject.add(pitchObject); 
+
+	function onMouseMove(event)
+	{
+		if (isPaused)
+			return;
+		inputMovementHorizontal = event.movementX || event.mozMovementX || 0;
+		inputMovementVertical = event.movementY || event.mozMovementY || 0;
+
+		inputMovementHorizontal = -inputMovementHorizontal * 0.0012 * cameraRotationSpeed;
+		inputMovementVertical = -inputMovementVertical * 0.001 * cameraRotationSpeed;
+
+		inputRotationHorizontal += inputMovementHorizontal;
+		inputRotationVertical += inputMovementVertical;
+		// clamp the camera's vertical movement (around the x-axis) to the scene's 'ceiling' and 'floor'
+		inputRotationVertical = Math.max(- PI_2, Math.min(PI_2, inputRotationVertical));
+	}
+
+	document.addEventListener('mousemove', onMouseMove, false);
+
+
+	this.getObject = function()
+	{
+		return yawObject;
+	};
+
+	this.getYawObject = function()
+	{
+		return yawObject;
+	};
+
+	this.getPitchObject = function()
+	{
+		return pitchObject;
+	};
+
+	this.getDirection = function()
+	{
+		const te = pitchObject.matrixWorld.elements;
+
+		return function(v)
+		{
+			v.set(te[8], te[9], te[10]).negate();
+			return v;
+		};
+	}();
+
+	this.getUpVector = function()
+	{
+		const te = pitchObject.matrixWorld.elements;
+
+		return function(v)
+		{
+			v.set(te[4], te[5], te[6]);
+			return v;
+		};
+	}();
+
+	this.getRightVector = function()
+	{
+		const te = pitchObject.matrixWorld.elements;
+
+		return function(v)
+		{
+			v.set(te[0], te[1], te[2]);
+			return v;
+		};
+	}();
+
+} // end function FirstPersonCameraControls(camera)
 
 
 function onWindowResize(event)
@@ -516,7 +607,6 @@ function initTHREEjs()
 	pathTracingUniforms.uCameraIsMoving = { type: "b1", value: false };
 	pathTracingUniforms.uUseOrthographicCamera = { type: "b1", value: false };
 
-
 	pathTracingDefines = {
 		//NUMBER_OF_TRIANGLES: total_number_of_triangles
 	};
@@ -650,30 +740,29 @@ function animate()
 	if (mouseControl)
 	{
 		// movement detected
-		if (oldYawRotation != cameraControlsYawObject.rotation.y ||
-			oldPitchRotation != cameraControlsPitchObject.rotation.x)
+		if (oldYawRotation != inputRotationHorizontal ||
+			oldPitchRotation != inputRotationVertical)
 		{
 			cameraIsMoving = true;
 		}
 
 		// save state for next frame
-		oldYawRotation = cameraControlsYawObject.rotation.y;
-		oldPitchRotation = cameraControlsPitchObject.rotation.x;
+		oldYawRotation = inputRotationHorizontal;
+		oldPitchRotation = inputRotationVertical;
 
 	} // end if (mouseControl)
 
 	// if on mobile device, get input from the mobileJoystickControls
 	if (!mouseControl)
 	{
-
 		newDeltaX = joystickDeltaX * cameraRotationSpeed;
 
 		if (newDeltaX)
 		{
 			cameraIsMoving = true;
-			mobileControlsMoveX = oldDeltaX - newDeltaX;
+			inputMovementHorizontal = (oldDeltaX - newDeltaX) * 0.01;
 			// mobileJoystick X movement (left and right) affects camera rotation around the Y axis	
-			cameraControlsYawObject.rotation.y += (mobileControlsMoveX) * 0.01;
+			inputRotationHorizontal += inputMovementHorizontal;
 		}
 
 		newDeltaY = joystickDeltaY * cameraRotationSpeed;
@@ -681,14 +770,14 @@ function animate()
 		if (newDeltaY)
 		{
 			cameraIsMoving = true;
-			mobileControlsMoveY = oldDeltaY - newDeltaY;
+			inputMovementVertical = (oldDeltaY - newDeltaY) * 0.01;
 			// mobileJoystick Y movement (up and down) affects camera rotation around the X axis	
-			cameraControlsPitchObject.rotation.x += (mobileControlsMoveY) * 0.01;
+			inputRotationVertical += inputMovementVertical;
 		}
 
 		// clamp the camera's vertical movement (around the x-axis) to the scene's 'ceiling' and 'floor',
 		// so you can't accidentally flip the camera upside down
-		cameraControlsPitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, cameraControlsPitchObject.rotation.x));
+		inputRotationVertical = Math.max(-PI_2, Math.min(PI_2, inputRotationVertical));
 
 		// save state for next frame
 		oldDeltaX = newDeltaX;
@@ -731,6 +820,10 @@ function animate()
 
 	} // end if ( !mouseControl )
 
+
+	cameraControlsYawObject.rotateY(inputMovementHorizontal);
+	cameraControlsPitchObject.rotateX(inputMovementVertical);
+
 	// this gives us a vector in the direction that the camera is pointing,
 	// which will be useful for moving the camera 'forward' and shooting projectiles in that direction
 	controls.getDirection(cameraDirectionVector);
@@ -740,13 +833,9 @@ function animate()
 	controls.getRightVector(cameraRightVector);
 	cameraRightVector.normalize();
 
-	// the following gives us a rotation quaternion (4D vector), which will be useful for 
-	// rotating scene objects to match the camera's rotation
-	worldCamera.getWorldQuaternion(cameraWorldQuaternion);
 
 	if (useGenericInput)
 	{
-
 		if (!isPaused)
 		{
 			if ((keyPressed('KeyW') || button3Pressed) && !(keyPressed('KeyS') || button4Pressed))
@@ -818,6 +907,9 @@ function animate()
 
 	// update scene/demo-specific input(if custom), variables and uniforms every animation frame
 	updateVariablesAndUniforms();
+
+	//reset controls movement
+	inputMovementHorizontal = inputMovementVertical = 0;
 
 
 	if (increaseFOV)
