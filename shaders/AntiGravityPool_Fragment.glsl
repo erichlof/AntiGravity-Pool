@@ -739,12 +739,8 @@ void main( void )
 	}
 
 	// makes sharp edges more stable
-	if (!uCameraIsMoving && previousPixel.a == 1.0)
-	{
-		if (pixelSharpness > 0.0)
-			currentPixel.a = 1.01;
-		else currentPixel.a = 1.0;
-	}
+	if (previousPixel.a == 1.0)
+		currentPixel.a = 1.0;
 		
 	// for dynamic scenes (to clear out old, dark, sharp pixel trails left behind from moving objects)
 	if (previousPixel.a == 1.0 && rng() < 0.05)
