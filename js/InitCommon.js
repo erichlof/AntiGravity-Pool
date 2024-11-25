@@ -69,9 +69,9 @@ let canPress_P = true;
 let allowOrthographicCamera = true;
 let changeToOrthographicCamera = false;
 let changeToPerspectiveCamera = false;
-let pixelEdgeSharpness = 1.0;
+let pixelEdgeSharpness = 0.75;
 let edgeSharpenSpeed = 0.05;
-let filterDecaySpeed = 0.0002;
+//let filterDecaySpeed = 0.0001;
 
 let gui;
 let ableToEngagePointerLock = true;
@@ -678,7 +678,8 @@ function initTHREEjs()
 		uOneOverSampleCounter: { type: "f", value: 0.0 },
 		uPixelEdgeSharpness: { type: "f", value: pixelEdgeSharpness },
 		uEdgeSharpenSpeed: { type: "f", value: edgeSharpenSpeed },
-		uFilterDecaySpeed: { type: "f", value: filterDecaySpeed },
+		//uFilterDecaySpeed: { type: "f", value: filterDecaySpeed },
+		uCameraIsMoving: { type: "b1", value: false },
 		uSceneIsDynamic: { type: "b1", value: sceneIsDynamic },
 		uUseToneMapping: { type: "b1", value: useToneMapping }
 	};
@@ -1035,6 +1036,7 @@ function animate()
 	worldCamera.updateMatrixWorld(true);
 	pathTracingUniforms.uCameraMatrix.value.copy(worldCamera.matrixWorld);
 
+	screenOutputUniforms.uCameraIsMoving.value = cameraIsMoving;
 	screenOutputUniforms.uSampleCounter.value = sampleCounter;
 	// PROGRESSIVE SAMPLE WEIGHT (reduces intensity of each successive animation frame's image)
 	screenOutputUniforms.uOneOverSampleCounter.value = 1.0 / sampleCounter;
