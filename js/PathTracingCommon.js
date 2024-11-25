@@ -2759,6 +2759,7 @@ float BoundingBoxIntersect( vec3 minCorner, vec3 maxCorner, vec3 rayOrigin, vec3
 	float t1 = min( min(tmax.x, tmax.y), tmax.z);
 	
 	return max(t0, 0.0) > t1 ? INFINITY : t0;
+	//return max(t0, 0.0) <= t1 ? t0 : INFINITY;
 }
 `;
 
@@ -2846,6 +2847,82 @@ float BVH_DoubleSidedTriangleIntersect( vec3 v0, vec3 v1, vec3 v2, vec3 rayOrigi
 	v = dot(rayDirection, qvec) * det; 
 	float t = dot(edge2, qvec) * det;
 	return (t <= 0.0 || u < 0.0 || u > 1.0 || v < 0.0 || u + v > 1.0) ? INFINITY : t;
+}
+`;
+
+THREE.ShaderChunk[ 'pathtracing_bilinear_patch_intersect' ] = `
+//----------------------------------------------------------------------------------------------------------------------------------------------
+float BilinearPatchIntersect( vec3 p0, vec3 p1, vec3 p2, vec3 p3, vec3 rayOrigin, vec3 rayDirection, out vec3 normal, out float u, out float v )
+//----------------------------------------------------------------------------------------------------------------------------------------------
+{ // algorithm/code by Alexander Reshetov (NVIDIA), from the book "Ray Tracing Gems", pg 95-109 
+	// 4 corners + "normal" qn
+	vec3 q00 = p0, q10 = p1, q11 = p2, q01 = p3;
+	vec3 qn = cross(q10-q00, q01-q11);	
+	vec3 e10 = q10 - q00; // q01 ----------- q11
+	vec3 e11 = q11 - q10; // |                 |
+	vec3 e00 = q01 - q00; // | e00         e11 |
+	q00 -= rayOrigin;     // |       e10       |
+	q10 -= rayOrigin;     // q00 ----------- q10
+	float a = dot(cross(q00, rayDirection), e00); // the equation is
+	float b = dot(cross(q10, rayDirection), e11); // a + b u + c u^2
+	float c = dot(qn, rayDirection); 	      // first compute
+	b -= (a + c);                                 // a+b+c and then b
+	float det = (b * b) - (4.0 * a * c);
+	if (det < 0.0) return INFINITY;
+
+	vec3 pa, pb, n;
+	float u0, u1; // two roots(u parameter)
+	float t = INFINITY; // need solution for the smallest t > 0
+	float t0, t1, v0, v1;
+
+	det = sqrt(det);
+	det = (b < 0.0) ? -det : det;
+	u0 = (-b - det) * 0.5; // numerically "stable" root
+	u1 = a / u0; // Viete's formula for u0*u1
+	u0 /= c;
+	
+	if (u0 >= 0.0 && u0 <= 1.0) // is it inside the patch?
+	{ 
+		pa = mix(q00, q10, u0); // point on edge e10
+		pb = mix(e00, e11, u0); // it is, actually, pb - pa
+		n = cross(rayDirection, pb);
+		det = dot(n, n);
+		n = cross(n, pa);
+		t0 = dot(n, pb);
+		v0 = dot(n, rayDirection);
+		if (t0 > 0.0 && t0 < t && v0 >= 0.0 && v0 <= det)
+		{
+			t = t0 / det; 
+			u = u0; 
+			v = v0 / det;
+		} 
+	}
+
+	if (u1 >= 0.0 && u1 <= 1.0) 
+	{				// it is slightly different,
+		pa = mix(q00, q10, u1); // since u0 might be good
+		pb = mix(e00, e11, u1); // and we need 0 < t2 < t1
+		n = cross(rayDirection, pb);
+		det = dot(n, n);
+		n = cross(n, pa);
+		t1 = dot(n, pb) / det;
+		v1 = dot(n, rayDirection);
+		if (t1 > 0.0 && t1 < t && v1 >= 0.0 && v1 <= det) 
+		{
+			t = t1; 
+			u = u1; 
+			v = v1 / det;
+		}
+	}
+
+	 // geometric normal = cross(du, dv)
+	normal = cross(mix(e10, q11 - q01, v), mix(e00, e11, u)); // geometric normal
+
+	//optional: use model's supplied vertex normals to interpolate smoothly, resulting in "shading normal"
+	//vec3 vn0 = patch.vertex_normals[0], vn1 = patch.vertex_normals[1], vn2 = patch.vertex_normals[2], vn3 = patch.vertex_normals[3];
+	//normal = mix(mix(vn0, vn1, u), mix(vn3, vn2, u), v); // shading normal
+
+	return t;
 }
 `;
 
@@ -3089,12 +3166,8 @@ float calcFresnelReflectance(vec3 rayDirection, vec3 n, float etaI, float etaT, 
 		return 1.0; 
 	float cosThetaT = sqrt(1.0 - sin2ThetaT);
 
-	float etaT_x_cosThetaI = etaT * cosThetaI;
-	float etaI_x_cosThetaT = etaI * cosThetaT;
-	float etaI_x_cosThetaI = etaI * cosThetaI;
-	float etaT_x_cosThetaT = etaT * cosThetaT;
-	float Rparl = (etaT_x_cosThetaI - etaI_x_cosThetaT) / (etaT_x_cosThetaI + etaI_x_cosThetaT);
-    	float Rperp = (etaI_x_cosThetaI - etaT_x_cosThetaT) / (etaI_x_cosThetaI + etaT_x_cosThetaT);
+	float Rparl = ((etaT * cosThetaI) - (etaI * cosThetaT)) / ((etaT * cosThetaI) + (etaI * cosThetaT));
+    	float Rperp = ((etaI * cosThetaI) - (etaT * cosThetaT)) / ((etaI * cosThetaI) + (etaT * cosThetaT));
     	return clamp(0.5 * ((Rparl * Rparl) + (Rperp * Rperp)), 0.0, 1.0);
 }
 `;
