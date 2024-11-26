@@ -732,11 +732,7 @@ void main( void )
 
 	// makes light source edges (shape boundaries) more stable
 	if (previousPixel.a == 1.01)
-	{
-		if (pixelSharpness > 0.0)
-			currentPixel.a = 1.01;
-		else currentPixel.a = 1.0;
-	}
+		currentPixel.a = 1.01;
 
 	// makes sharp edges more stable
 	if (previousPixel.a == 1.0)
