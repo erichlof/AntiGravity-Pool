@@ -65,8 +65,9 @@ let listener;
 // called automatically from within initTHREEjs() function (located in InitCommon.js file)
 function initSceneData() 
 {        
-
-	demoFragmentShaderFileName = 'AntiGravityPool_Fragment.glsl';
+	if (!mouseControl)
+		demoFragmentShaderFileName = 'AntiGravityPool_Fragment_Mobile.glsl';
+	else demoFragmentShaderFileName = 'AntiGravityPool_Fragment.glsl';
 
 	// game-specific settings and three.js variables / Oimo.js physics setup goes here
 	sceneIsDynamic = true;
